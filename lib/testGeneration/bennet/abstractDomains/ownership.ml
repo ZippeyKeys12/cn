@@ -143,8 +143,7 @@ module Interpreter : Domain.Interpreter = struct
     match tm_ with
     (* Statements that don't affect ownership *)
     | `Arbitrary | `LetStar _ | `Return _ | `Assert _ | `ITE _ | `Map _ | `Pick _
-    | `PickSized _ | `SplitSize _ | `AssertDomain _ | `MapElab _ | `PickSizedElab _
-    | `SplitSizeElab _ ->
+    | `PickSized _ | `SplitSize _ | `MapElab _ | `PickSizedElab _ | `SplitSizeElab _ ->
       d
     (* Function calls: propagate ownership from callee's return *)
     | `Call (fsym, _) | `CallSized (fsym, _, _) ->
