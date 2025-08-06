@@ -23,7 +23,6 @@ module Make (GT : GenTerms.T) (I : Domain.Interpreter with module AD = GT.AD) = 
       | `SplitSizeElab (_, _, gt') ->
         let d' = I.abs_stmt ctx tm d in
         interp ctx gt' d'
-      (* Sequential composition: interpret first, then second *)
       | `LetStar ((x, gt1), gt2) ->
         let d' = interp ctx gt1 d in
         let d'' = AD.rename ~from:GenTerms.Domain.ret_sym ~to_:x d' in

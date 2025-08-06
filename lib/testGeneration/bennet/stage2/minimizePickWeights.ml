@@ -19,7 +19,7 @@
         else
           fun w -> Z.max Z.one (Z.div w (Z.div (Z.add w_sum (Z.pred max_int)) max_int))
       in
-      Term.pick_ (List.map (fun (w, gt) -> (f w, gt)) wgts) () bt loc
+      Term.pick_ (List.map (fun (w, gt) -> (f w, gt)) wgts) () loc
     | gt -> gt
   in
   Term.map_gen_pre aux tm

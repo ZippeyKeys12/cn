@@ -48,11 +48,11 @@ module Make (AD : GenTerms.Domain.T) = struct
     let transform_gt (gt : Term.t) : Term.t =
       let aux (gt : Term.t) : Term.t =
         match gt with
-        | Annot (`Pick gts, (), bt, loc_pick) ->
+        | Annot (`Pick gts, (), _bt, loc_pick) ->
           Term.pick_
             (List.filter (fun gt' -> not (contains_false_assertion gt')) gts)
             ()
-            bt
+            _bt
             loc_pick
         | Annot (`ITE (it_if, gt_then, gt_else), (), _, loc_ite) ->
           if contains_false_assertion gt_else then
