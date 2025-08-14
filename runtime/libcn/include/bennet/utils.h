@@ -2,8 +2,46 @@
 #define BENNET_UTILS_H
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+
+// Helper macros for bitvector types
+#define BV_MAX(cty)                                                                      \
+  _Generic((cty)0,                                                                       \
+      uint8_t: UINT8_MAX,                                                                \
+      uint16_t: UINT16_MAX,                                                              \
+      uint32_t: UINT32_MAX,                                                              \
+      uint64_t: UINT64_MAX,                                                              \
+      uintptr_t: UINTPTR_MAX,                                                            \
+      int8_t: INT8_MAX,                                                                  \
+      int16_t: INT16_MAX,                                                                \
+      int32_t: INT32_MAX,                                                                \
+      int64_t: INT64_MAX)
+
+#define BV_MIN(cty)                                                                      \
+  _Generic((cty)0,                                                                       \
+      uint8_t: 0,                                                                        \
+      uint16_t: 0,                                                                       \
+      uint32_t: 0,                                                                       \
+      uint64_t: 0,                                                                       \
+      uintptr_t: 0,                                                                      \
+      int8_t: INT8_MIN,                                                                  \
+      int16_t: INT16_MIN,                                                                \
+      int32_t: INT32_MIN,                                                                \
+      int64_t: INT64_MIN)
+
+#define BV_C(cty, const)                                                                 \
+  _Generic((cty)0,                                                                       \
+      uint8_t: UINT8_C(const),                                                           \
+      uint16_t: UINT16_C(const),                                                         \
+      uint32_t: UINT32_C(const),                                                         \
+      uint64_t: UINT64_C(const),                                                         \
+      uintptr_t: UINTMAX_C(const),                                                       \
+      int8_t: INT8_C(const),                                                             \
+      int16_t: INT16_C(const),                                                           \
+      int32_t: INT32_C(const),                                                           \
+      int64_t: INT64_C(const))
 
 // Helper function to get the base name of a filename
 static inline const char* get_basename(const char* filename) {
