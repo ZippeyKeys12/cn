@@ -11,6 +11,7 @@ module [@warning "-60"] Make (AD : Domain.T) = struct
   module Inner = struct
     type ('tag, 'recur) ast =
       [ `Arbitrary (** Generate arbitrary values *)
+      | `Symbolic (** Generate symbolic values *)
       | `ArbitraryDomain of AD.Relative.t
       | `Call of Sym.t * IT.t list
         (** Call a defined generator according to a [Sym.t] with arguments [IT.t list] *)
@@ -96,6 +97,7 @@ module [@warning "-60"] Make (AD : Domain.T) = struct
     let (Annot (tm_, _, bt, _)) = tm in
     match tm_ with
     | `Arbitrary -> !^"arbitrary" ^^ angles (BT.pp bt) ^^ parens empty
+    | `Symbolic -> !^"symbolic" ^^ angles (BT.pp bt) ^^ parens empty
     | `ArbitraryDomain d ->
       !^"arbitrary_domain" ^^ angles (BT.pp bt) ^^ parens (AD.Relative.pp d)
     | `Call (fsym, iargs) ->
@@ -201,7 +203,7 @@ module [@warning "-60"] Make (AD : Domain.T) = struct
 
   let rec free_vars_bts_ (gt_ : [< ('tag, 'recur) ast ] as 'recur) : BT.t Sym.Map.t =
     match gt_ with
-    | `Arbitrary -> Sym.Map.empty
+    | `Arbitrary | `Symbolic -> Sym.Map.empty
     | `Call (_, iargs) -> IT.free_vars_bts_list iargs
     | `Asgn ((it_addr, _), it_val, gt') ->
       Sym.Map.union
@@ -269,7 +271,7 @@ module [@warning "-60"] Make (AD : Domain.T) = struct
   let rec contains_call (gt : ('tag, ([< ('tag, 'recur) ast ] as 'recur)) annot) : bool =
     let (Annot (gt_, (), _, _)) = gt in
     match gt_ with
-    | `Arbitrary | `Return _ -> false
+    | `Arbitrary | `Symbolic | `Return _ -> false
     | `Call _ | `CallSized _ -> true
     | `LetStar ((_, gt1), gt2) | `ITE (_, gt1, gt2) ->
       contains_call gt1 || contains_call gt2
@@ -292,7 +294,7 @@ module [@warning "-60"] Make (AD : Domain.T) = struct
     =
     let (Annot (gt_, (), _, _)) = gt in
     match gt_ with
-    | `Arbitrary | `Return _ -> false
+    | `Arbitrary | `Symbolic | `Return _ -> false
     | `Asgn _ | `AsgnElab _ | `Assert _ | `AssertDomain _ -> true
     | `Call _ | `CallSized _ -> true (* Could be less conservative... *)
     | `LetStar ((_, gt1), gt2) | `ITE (_, gt1, gt2) ->
@@ -390,6 +392,8 @@ module type T = sig
   val pp : t -> Pp.document
 
   val arbitrary_ : tag_t -> BT.t -> Locations.t -> t
+
+  val symbolic_ : tag_t -> BT.t -> Locations.t -> t
 
   val arbitrary_domain_ : AD.Relative.t -> tag_t -> BT.t -> Locations.t -> t
 
