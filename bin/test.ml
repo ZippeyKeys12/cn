@@ -479,7 +479,11 @@ module Flags = struct
       value
       & opt
           (list
-             (enum [ ("interval", "interval"); ("wrapped_interval", "wrapped_interval") ]))
+             (enum
+                [ ("interval", "interval");
+                  ("wrapped_interval", "wrapped_interval");
+                  ("tristate", "tristate")
+                ]))
           []
       & info [ "static-absint" ] ~docv:"DOMAIN" ~doc)
 

@@ -177,18 +177,26 @@ let product_domains (domains : (module Domain.T) list) =
                  domains)
           in
           let domain_index' (name : string) =
-            Option.get
-              (List.find_index
-                 (fun (module D : Domain.T) -> String.equal name D.CInt.name)
-                 domains)
+            match
+              List.find_index
+                (fun (module D : Domain.T) -> String.equal name D.CInt.name)
+                domains
+            with
+            | Some i -> i
+            | None -> failwith ("Can't index domain: " ^ name)
           in
           let arb_funcs =
+            let domain_names =
+              StringSet.of_list
+                (List.map (fun (module D : Domain.T) -> D.CInt.name) domains)
+            in
             domains
             |> List.map (fun (module D : Domain.T) ->
               let res =
                 StringSetSet.fold
                   (fun g acc ->
-                     if StringSet.mem D.CInt.name g then (
+                     if StringSet.mem D.CInt.name g && StringSet.subset g domain_names
+                     then (
                        match StringSetSet.elements acc with
                        | h :: _ when StringSet.cardinal h = StringSet.cardinal g ->
                          StringSetSet.add g acc

@@ -44,6 +44,8 @@ let parse_domain (s : string list) : (module Domain.T) =
       Some (module AbstractDomains.Interval)
     | _ when String.equal name AbstractDomains.WrappedInterval.name ->
       Some (module AbstractDomains.WrappedInterval)
+    | _ when String.equal name AbstractDomains.TristateNumbers.name ->
+      Some (module AbstractDomains.TristateNumbers)
     | _ ->
       Pp.warn_noloc Pp.(!^"Unknown abstract domain," ^^^ squotes !^name);
       None
