@@ -11,11 +11,41 @@ module Make (AD : Domain.T) = struct
   module Ctx = Stage5.Ctx
   module Def = Stage5.Def
 
-  let arbitrary_of_bt (prog5 : unit Mucore.file) (bt : BT.t) =
+  let rec arbitrary_to_eager_ (tm : ('tag, 'recur) GenTerms.Base(AD).ast as 'recur)
+    : ('tag, 'recur) GenTerms.Base(AD).ast as 'recur
+    =
+    match tm with
+    | `Arbitrary -> `Eager
+    | `Asgn (addr_sct, it_val, g') -> `Asgn (addr_sct, it_val, arbitrary_to_eager g')
+    | `AsgnElab (bv, p, it_val, g') -> `AsgnElab (bv, p, it_val, arbitrary_to_eager g')
+    | `LetStar ((x, gt1), gt2) ->
+      `LetStar ((x, arbitrary_to_eager gt1), arbitrary_to_eager gt2)
+    | `Assert (lc, g') -> `Assert (lc, arbitrary_to_eager g')
+    | `AssertDomain (ad, g') -> `AssertDomain (ad, arbitrary_to_eager g')
+    | `ITE (it, gt_then, gt_else) ->
+      `ITE (it, arbitrary_to_eager gt_then, arbitrary_to_eager gt_else)
+    | `Map (i_bt_perm, g') -> `Map (i_bt_perm, arbitrary_to_eager g')
+    | `MapElab (i_bt_bounds_perm, g') -> `MapElab (i_bt_bounds_perm, arbitrary_to_eager g')
+    | `Pick gts -> `Pick (List.map arbitrary_to_eager gts)
+    | `PickSized choices ->
+      `PickSized (List.map (fun (w, g) -> (w, arbitrary_to_eager g)) choices)
+    | `PickSizedElab (pv, choices) ->
+      `PickSizedElab (pv, List.map (fun (w, g) -> (w, arbitrary_to_eager g)) choices)
+    | `SplitSize (syms, g') -> `SplitSize (syms, arbitrary_to_eager g')
+    | `SplitSizeElab (sv, syms, g') -> `SplitSizeElab (sv, syms, arbitrary_to_eager g')
+    | other -> other
+
+
+  and arbitrary_to_eager (GenTerms.Annot (tm_, tag, bt, loc)) =
+    GenTerms.Annot (arbitrary_to_eager_ tm_, tag, bt, loc)
+
+
+  let eager_of_bt (prog5 : unit Mucore.file) (bt : BT.t) =
     let module Stage1 = Stage1.Make (AD) in
     Stage1.Term.arbitrary_ () bt (Locations.other __LOC__)
     |> Stage1.DestructArbitrary.transform_gt prog5
     |> Stage1.Term.upcast
+    |> arbitrary_to_eager
 
 
   let gather_of_bt (sigma : CF.GenTypes.genTypeCategory A.sigma) ((sym, tm) : Sym.t * _)
@@ -94,7 +124,7 @@ module Make (AD : Domain.T) = struct
       !^"cn_bump_frame_id gather_checkpoint = cn_bump_get_frame_id();"
     in
     let context_init = !^"cn_smt_gather_init();" in
-    let destructed_vars = def.iargs |> List.map_snd (arbitrary_of_bt prog5) in
+    let destructed_vars = def.iargs |> List.map_snd (eager_of_bt prog5) in
     (* Generate symbolic variable declarations for each argument *)
     let symbolic_vars =
       destructed_vars |> List.map (gather_of_bt sigma) |> Pp.separate Pp.hardline

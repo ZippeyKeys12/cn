@@ -135,7 +135,7 @@ module Make (AD : Domain.T) = struct
     =
     let (Annot (tm_, (path_vars, last_var), bt, _)) = tm in
     match tm_ with
-    | `Arbitrary ->
+    | `Eager ->
       (match bt with
        | Loc () -> ([], [], mk_expr (string_call "BENNET_ARBITRARY_POINTER" []))
        | Bits (sign, bits) ->
@@ -152,7 +152,7 @@ module Make (AD : Domain.T) = struct
        | _ ->
          failwith
            (Printf.sprintf
-              "Arbitrary: only pointer and bitvector types are supported, got %s"
+              "Eager: only pointer and bitvector types are supported, got %s"
               (Pp.plain (BT.pp bt))))
     | `Symbolic -> failwith "TODO"
     | `Lazy -> failwith "standalone Lazy should not appear in stage 7"
@@ -474,8 +474,8 @@ module Make (AD : Domain.T) = struct
       in
       let b_rest, s_rest, e_rest = transform_term filename sigma ctx name gt_rest in
       (b_let @ b_rest, s_let @ s_rest, e_rest)
-    | `LetStar
-        ((x, GenTerms.Annot (`Arbitrary, _, (Bits (sign, bits) as x_bt), _)), gt_rest) ->
+    | `LetStar ((x, GenTerms.Annot (`Eager, _, (Bits (sign, bits) as x_bt), _)), gt_rest)
+      ->
       let b_let = [ Utils.create_binding x (bt_to_ctype_for_binding x_bt) ] in
       let func_name =
         match sign with
@@ -676,7 +676,7 @@ module Make (AD : Domain.T) = struct
       in
       let b_rest, s_rest, e_rest = transform_term filename sigma ctx name gt_rest in
       (b_let @ b_rest, s_let @ s_rest, e_rest)
-    | `LetStar ((x, GenTerms.Annot (`Arbitrary, _, (Loc () as x_bt), _)), gt_rest) ->
+    | `LetStar ((x, GenTerms.Annot (`Eager, _, (Loc () as x_bt), _)), gt_rest) ->
       let b_let = [ Utils.create_binding x (bt_to_ctype_for_binding x_bt) ] in
       let s_let =
         [ A.AilSexpr
@@ -725,7 +725,7 @@ module Make (AD : Domain.T) = struct
       in
       let b_rest, s_rest, e_rest = transform_term filename sigma ctx name gt_rest in
       (b_let @ b_rest, s_let @ s_rest, e_rest)
-    | `LetStar ((_, GenTerms.Annot (`Arbitrary, _, bt, _)), _) ->
+    | `LetStar ((_, GenTerms.Annot (`Eager, _, bt, _)), _) ->
       failwith ("unreachable @ " ^ __LOC__ ^ " with type: " ^ Pp.plain (BT.pp bt))
     | `LetStar ((_, GenTerms.Annot (`Symbolic, _, bt, _)), _) ->
       failwith ("unreachable @ " ^ __LOC__ ^ " with type: " ^ Pp.plain (BT.pp bt))
@@ -1049,8 +1049,7 @@ module Make (AD : Domain.T) = struct
       let b_rest, s_rest, e_rest = transform_term filename sigma ctx name gt_rest in
       (b_rest, s_inst @ s_rest, e_rest)
     | `InstantiateElab
-        (backtrack_var, (x, GenTerms.Annot (`Arbitrary, _, Bits (sign, bits), _)), gt_rest)
-      ->
+        (backtrack_var, (x, GenTerms.Annot (`Eager, _, Bits (sign, bits), _)), gt_rest) ->
       let func_name =
         match sign with
         | Unsigned -> "BENNET_INSTANTIATE_ARBITRARY_UNSIGNED"
@@ -1079,8 +1078,8 @@ module Make (AD : Domain.T) = struct
       in
       let b_rest, s_rest, e_rest = transform_term filename sigma ctx name gt_rest in
       (b_rest, s_inst @ s_rest, e_rest)
-    | `InstantiateElab
-        (backtrack_var, (x, GenTerms.Annot (`Arbitrary, _, Loc (), _)), gt_rest) ->
+    | `InstantiateElab (backtrack_var, (x, GenTerms.Annot (`Eager, _, Loc (), _)), gt_rest)
+      ->
       let s_inst =
         [ A.AilSexpr
             (mk_expr
@@ -1309,7 +1308,7 @@ module Make (AD : Domain.T) = struct
       (b_rest, s_inst @ s_rest, e_rest)
     | `InstantiateElab (_, (_, GenTerms.Annot (`ArbitrarySpecialized _, _, bt, _)), _) ->
       failwith ("unreachable @ " ^ __LOC__ ^ " with type: " ^ Pp.plain (BT.pp bt))
-    | `InstantiateElab (_, (_, GenTerms.Annot (`Arbitrary, _, bt, _)), _) ->
+    | `InstantiateElab (_, (_, GenTerms.Annot (`Eager, _, bt, _)), _) ->
       failwith ("unreachable @ " ^ __LOC__ ^ " with type: " ^ Pp.plain (BT.pp bt))
     | `InstantiateElab (_, (_, GenTerms.Annot (`ArbitraryDomain _, _, bt, _)), _) ->
       failwith ("unreachable @ " ^ __LOC__ ^ " with type: " ^ Pp.plain (BT.pp bt))

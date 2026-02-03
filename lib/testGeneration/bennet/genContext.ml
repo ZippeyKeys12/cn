@@ -28,8 +28,8 @@ module Make (GT : GenTerms.T) = struct
       let rec aux (gt : GT.t) : Sym.Set.t =
         let (Annot (gt_, _, _, _)) = gt in
         match gt_ with
-        | `Arbitrary | `Symbolic | `Lazy | `ArbitrarySpecialized _ | `ArbitraryDomain _
-        | `Return _ ->
+        | `Arbitrary | `Eager | `Symbolic | `Lazy | `ArbitrarySpecialized _
+        | `ArbitraryDomain _ | `EagerDomain _ | `Return _ ->
           Sym.Set.empty
         | `Pick gts -> gts |> List.map aux |> List.fold_left Sym.Set.union Sym.Set.empty
         | `PickSized wgts | `PickSizedElab (_, wgts) ->

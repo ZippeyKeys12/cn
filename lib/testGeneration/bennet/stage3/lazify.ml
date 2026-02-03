@@ -10,14 +10,14 @@ module Make (AD : Domain.T) = struct
     let rec aux (gt : Term.t) : bool =
       let (Annot (gt_, _, _, _)) = gt in
       match gt_ with
-      | `Arbitrary | `Symbolic | `Lazy -> false
+      | `Eager | `Symbolic | `Lazy -> false
       | `Return it_val -> Sym.Set.mem x (IT.free_vars it_val)
       | `Asgn ((it_addr, _), _, gt_rest) ->
         Sym.Set.mem x (IT.free_vars it_addr) || aux gt_rest
       | `Assert (lc, gt_rest) -> Sym.Set.mem x (LC.free_vars lc) || aux gt_rest
       | `Call _ -> false
-      | `LetStar
-          ((_, Annot ((`Arbitrary | `Symbolic | `Lazy | `Call _), _, _, _)), gt_rest) ->
+      | `LetStar ((_, Annot ((`Eager | `Symbolic | `Lazy | `Call _), _, _, _)), gt_rest)
+        ->
         aux gt_rest
       | `LetStar ((_, Annot (`Map ((y, _y_bt, _it_perm), gt_inner), _, _, _)), gt_rest) ->
         ((not (Sym.equal x y)) && aux gt_inner) || aux gt_rest
@@ -36,10 +36,10 @@ module Make (AD : Domain.T) = struct
   let rec transform_gt (gt : Term.t) : Term.t =
     let (GenTerms.Annot (gt_, _tag, bt, loc)) = gt in
     match gt_ with
-    | `Arbitrary | `Lazy | `Symbolic | `Call _ | `Return _ -> gt
+    | `Eager | `Lazy | `Symbolic | `Call _ | `Return _ -> gt
     | `Asgn ((it_addr, sct), it_val, gt_rest) ->
       Term.asgn_ ((it_addr, sct), it_val, transform_gt gt_rest) () loc
-    | `LetStar ((x, GenTerms.Annot (`Arbitrary, _, inner_bt, inner_loc)), gt_rest)
+    | `LetStar ((x, GenTerms.Annot (`Eager, _, inner_bt, inner_loc)), gt_rest)
       when not (is_locally_constrained x gt_rest) ->
       Term.let_star_ ((x, Term.lazy_ () inner_bt inner_loc), transform_gt gt_rest) () loc
     | `LetStar ((x, gt_inner), gt_rest) ->

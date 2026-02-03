@@ -31,7 +31,7 @@ module Make (AD : Domain.T) = struct
     match tm_ with
     | `ArbitrarySpecialized _ ->
       failwith "ArbitrarySpecialized not supported in symbolic mode"
-    | `Arbitrary | `Symbolic | `Lazy ->
+    | `Eager | `Symbolic | `Lazy ->
       (* Generate symbolic value of the given base type *)
       { statements = [];
         expression = !^"CN_SMT_CONCRETIZE_SYMBOLIC" ^^ parens (Smt.convert_basetype bt)
@@ -81,8 +81,8 @@ module Make (AD : Domain.T) = struct
       { statements = assign_stmt :: next_result.statements;
         expression = next_result.expression
       }
-    | `LetStar
-        ((var_sym, Annot ((`Arbitrary | `Symbolic | `Lazy), _, bt_arb, _)), body_term) ->
+    | `LetStar ((var_sym, Annot ((`Eager | `Symbolic | `Lazy), _, bt_arb, _)), body_term)
+      ->
       (* Let binding with potential backtracking *)
       let body_result = concretize_term sigma body_term in
       { statements =
@@ -147,9 +147,7 @@ module Make (AD : Domain.T) = struct
         ( (i_sym, i_bt, it_perm),
           Annot
             ( `LetStar
-                ( ( x,
-                    Annot ((`Arbitrary | `ArbitraryDomain _ | `Symbolic | `Lazy), _, _, _)
-                  ),
+                ( (x, Annot ((`Eager | `ArbitraryDomain _ | `Symbolic | `Lazy), _, _, _)),
                   Annot
                     ( `Asgn
                         ( (it_addr, sct),

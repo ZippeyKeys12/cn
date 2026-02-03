@@ -13,7 +13,7 @@ module Make (AD : Domain.T) = struct
       let here = Locations.other __LOC__ in
       let (Annot (tm_, (), bt, loc)) = tm in
       match tm_ with
-      | `Arbitrary | `ArbitraryDomain _ | `ArbitrarySpecialized _ | `Symbolic | `Lazy
+      | `Eager | `ArbitraryDomain _ | `ArbitrarySpecialized _ | `Symbolic | `Lazy
       | `Return _ | `Call _ ->
         let@ check = provable loc in
         return
@@ -76,8 +76,7 @@ module Make (AD : Domain.T) = struct
            let@ gt_rest in
            return (Term.let_star_ ((x, Term.return_ it () loc_ret), gt_rest) () loc))
       | `LetStar
-          ((x, (Annot ((`Arbitrary | `Symbolic | `Lazy), _, bt', _) as gt_inner)), gt_rest)
-        ->
+          ((x, (Annot ((`Eager | `Symbolic | `Lazy), _, bt', _) as gt_inner)), gt_rest) ->
         let@ () = add_l x bt' (loc, lazy (Sym.pp x)) in
         let@ gt_rest = aux new_constraint gt_rest in
         return

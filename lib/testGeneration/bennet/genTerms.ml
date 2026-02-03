@@ -10,11 +10,13 @@ type ('tag, 'ast) annot =
 module Base (AD : Domain.T) = struct
   type ('tag, 'recur) ast =
     [ `Arbitrary (** Generate arbitrary values *)
+    | `Eager (** Eagerly generate values *)
     | `Symbolic (** Generate symbolic values *)
     | `Lazy (** Lazily generate values *)
     | `ArbitrarySpecialized of (IT.t option * IT.t option) * (IT.t option * IT.t option)
       (** Generate arbitrary values: ((min_inc, min_ex), (max_inc, max_ex)) *)
     | `ArbitraryDomain of AD.Relative.t
+    | `EagerDomain of AD.Relative.t
     | `Call of Sym.t * IT.t list
       (** Call a defined generator according to a [Sym.t] with arguments [IT.t list] *)
     | `Asgn of (IT.t * Sctypes.t) * IT.t * ('tag, 'recur) annot
@@ -61,6 +63,8 @@ module type T = sig
 
   val arbitrary_ : tag_t -> BT.t -> Locations.t -> t
 
+  val eager_ : tag_t -> BT.t -> Locations.t -> t
+
   val symbolic_ : tag_t -> BT.t -> Locations.t -> t
 
   val lazy_ : tag_t -> BT.t -> Locations.t -> t
@@ -73,6 +77,8 @@ module type T = sig
     t
 
   val arbitrary_domain_ : AD.Relative.t -> tag_t -> BT.t -> Locations.t -> t
+
+  val eager_domain_ : AD.Relative.t -> tag_t -> BT.t -> Locations.t -> t
 
   val call_ : Sym.t * IT.t list -> tag_t -> BT.t -> Locations.t -> t
 
@@ -172,6 +178,7 @@ module Make (GT : T) = struct
     let (Annot (tm_, _, bt, _)) = tm in
     match tm_ with
     | `Arbitrary -> !^"arbitrary" ^^ angles (BT.pp bt) ^^ parens empty
+    | `Eager -> !^"eager" ^^ angles (BT.pp bt) ^^ parens empty
     | `Symbolic -> !^"symbolic" ^^ angles (BT.pp bt) ^^ parens empty
     | `Lazy -> !^"lazy" ^^ angles (BT.pp bt) ^^ parens empty
     | `ArbitrarySpecialized ((min_inc, min_ex), (max_inc, max_ex)) ->
@@ -187,6 +194,7 @@ module Make (GT : T) = struct
             ^^^ parens (pp_opt max_inc ^^ comma ^^^ pp_opt max_ex))
     | `ArbitraryDomain d ->
       !^"arbitrary_domain" ^^ angles (BT.pp bt) ^^ parens (AD.Relative.pp d)
+    | `EagerDomain d -> !^"eager_domain" ^^ angles (BT.pp bt) ^^ parens (AD.Relative.pp d)
     | `Call (fsym, iargs) ->
       Sym.pp fsym ^^ parens (nest 2 (separate_map (comma ^^ break 1) IT.pp iargs))
     | `Asgn ((it_addr, ty), it_val, gt') ->
@@ -303,7 +311,8 @@ module Make (GT : T) = struct
 
   let rec free_vars_bts_ (gt_ : GT.t_) : BT.t Sym.Map.t =
     match gt_ with
-    | `Arbitrary | `ArbitraryDomain _ | `Symbolic | `Lazy -> Sym.Map.empty
+    | `Arbitrary | `Eager | `ArbitraryDomain _ | `EagerDomain _ | `Symbolic | `Lazy ->
+      Sym.Map.empty
     | `ArbitrarySpecialized ((min_inc, min_ex), (max_inc, max_ex)) ->
       IT.free_vars_bts_list (List.filter_map Fun.id [ min_inc; min_ex; max_inc; max_ex ])
     | `Call (_, iargs) | `CallSized (_, iargs, _) -> IT.free_vars_bts_list iargs
@@ -385,8 +394,8 @@ module Make (GT : T) = struct
   let rec contains_call (gt : GT.t) : bool =
     let (Annot (gt_, _, _, _)) = gt in
     match gt_ with
-    | `Arbitrary | `ArbitraryDomain _ | `ArbitrarySpecialized _ | `Symbolic | `Lazy
-    | `Return _ ->
+    | `Arbitrary | `Eager | `ArbitraryDomain _ | `EagerDomain _ | `ArbitrarySpecialized _
+    | `Symbolic | `Lazy | `Return _ ->
       false
     | `Call _ | `CallSized _ -> true
     | `LetStar ((_, gt1), gt2) | `ITE (_, gt1, gt2) ->
@@ -411,9 +420,9 @@ module Make (GT : T) = struct
   let rec contains_constraint (gt : GT.t) : bool =
     let (Annot (gt_, _, _, _)) = gt in
     match gt_ with
-    | `Arbitrary | `Symbolic | `Lazy | `Return _ -> false
-    | `ArbitraryDomain _ | `ArbitrarySpecialized _ | `Asgn _ | `AsgnElab _ | `Assert _
-    | `AssertDomain _ ->
+    | `Arbitrary | `Eager | `Symbolic | `Lazy | `Return _ -> false
+    | `ArbitraryDomain _ | `EagerDomain _ | `ArbitrarySpecialized _ | `Asgn _
+    | `AsgnElab _ | `Assert _ | `AssertDomain _ ->
       true
     | `Call _ | `CallSized _ -> true (* Could be less conservative... *)
     | `LetStar ((_, gt1), gt2) | `ITE (_, gt1, gt2) ->
@@ -433,7 +442,8 @@ module Make (GT : T) = struct
     let rec aux (gt : GT.t) : Sym.Set.t =
       let (Annot (gt_, _, _, _)) = gt in
       match gt_ with
-      | `Arbitrary | `Symbolic | `Lazy | `ArbitraryDomain _ -> Sym.Set.empty
+      | `Arbitrary | `Eager | `Symbolic | `Lazy | `ArbitraryDomain _ | `EagerDomain _ ->
+        Sym.Set.empty
       | `ArbitrarySpecialized ((min_inc, min_ex), (max_inc, max_ex)) ->
         [ min_inc; min_ex; max_inc; max_ex ]
         |> List.filter_map Fun.id
@@ -471,6 +481,7 @@ module Make (GT : T) = struct
     let (Annot (gt_, tag, bt, loc)) = gt in
     match gt_ with
     | `Arbitrary -> arbitrary_ tag bt loc
+    | `Eager -> eager_ tag bt loc
     | `Symbolic -> symbolic_ tag bt loc
     | `Lazy -> lazy_ tag bt loc
     | `ArbitrarySpecialized ((min_inc, min_ex), (max_inc, max_ex)) ->
@@ -481,6 +492,7 @@ module Make (GT : T) = struct
         bt
         loc
     | `ArbitraryDomain ad -> arbitrary_domain_ ad tag bt loc
+    | `EagerDomain ad -> eager_domain_ ad tag bt loc
     | `Call (fsym, iargs) -> call_ (fsym, List.map (IT.subst su) iargs) tag bt loc
     | `CallSized (fsym, iargs, sz) ->
       call_sized_ (fsym, List.map (IT.subst su) iargs, sz) tag bt loc
@@ -566,10 +578,12 @@ module Make (GT : T) = struct
     let (Annot (gt_, tag, bt, loc)) = f g in
     match gt_ with
     | `Arbitrary -> arbitrary_ tag bt loc
+    | `Eager -> eager_ tag bt loc
     | `Symbolic -> symbolic_ tag bt loc
     | `Lazy -> lazy_ tag bt loc
     | `ArbitrarySpecialized bounds -> arbitrary_specialized_ bounds tag bt loc
     | `ArbitraryDomain ad -> arbitrary_domain_ ad tag bt loc
+    | `EagerDomain ad -> eager_domain_ ad tag bt loc
     | `Call (fsym, its) -> call_ (fsym, its) tag bt loc
     | `CallSized (fsym, its, sz) -> call_sized_ (fsym, its, sz) tag bt loc
     | `Asgn ((it_addr, sct), it_val, gt') ->
@@ -619,10 +633,12 @@ module Make (GT : T) = struct
     let result =
       match gt_ with
       | `Arbitrary -> arbitrary_ tag bt loc
+      | `Eager -> eager_ tag bt loc
       | `Symbolic -> symbolic_ tag bt loc
       | `Lazy -> lazy_ tag bt loc
       | `ArbitrarySpecialized bounds -> arbitrary_specialized_ bounds tag bt loc
       | `ArbitraryDomain ad -> arbitrary_domain_ ad tag bt loc
+      | `EagerDomain ad -> eager_domain_ ad tag bt loc
       | `Call (fsym, its) -> call_ (fsym, its) tag bt loc
       | `CallSized (fsym, its, sz) -> call_sized_ (fsym, its, sz) tag bt loc
       | `Asgn ((it_addr, sct), it_val, gt') ->
@@ -672,10 +688,12 @@ module Make (GT : T) = struct
   let rec upcast_ (tm : t_) : ('tag, 'recur) ast as 'recur =
     match tm with
     | `Arbitrary -> `Arbitrary
+    | `Eager -> `Eager
     | `Symbolic -> `Symbolic
     | `Lazy -> `Lazy
     | `ArbitrarySpecialized bounds -> `ArbitrarySpecialized bounds
     | `ArbitraryDomain ad -> `ArbitraryDomain ad
+    | `EagerDomain ad -> `EagerDomain ad
     | `Call (fsym, iargs) -> `Call (fsym, iargs)
     | `CallSized (fsym, iargs, sz) -> `CallSized (fsym, iargs, sz)
     | `Asgn (addr_sct, it_val, g') -> `Asgn (addr_sct, it_val, upcast g')
@@ -710,10 +728,12 @@ module Make (GT : T) = struct
     let (Annot (tm_, tag, bt, loc)) = tm in
     match tm_ with
     | `Arbitrary -> arbitrary_ tag bt loc
+    | `Eager -> eager_ tag bt loc
     | `Symbolic -> symbolic_ tag bt loc
     | `Lazy -> lazy_ tag bt loc
     | `ArbitrarySpecialized bounds -> arbitrary_specialized_ bounds tag bt loc
     | `ArbitraryDomain ad -> arbitrary_domain_ ad tag bt loc
+    | `EagerDomain ad -> eager_domain_ ad tag bt loc
     | `Call (fsym, iargs) -> call_ (fsym, iargs) tag bt loc
     | `CallSized (fsym, iargs, sz) -> call_sized_ (fsym, iargs, sz) tag bt loc
     | `Asgn (addr_sct, it_val, g') -> asgn_ (addr_sct, it_val, downcast g') tag loc
@@ -828,11 +848,17 @@ module Defaults (StageName : sig
 struct
   let unsupported name = failwith (name ^ " not supported in " ^ StageName.name ^ " DSL")
 
+  let arbitrary_ _ _ _ = unsupported "arbitrary_"
+
+  let eager_ _ _ _ = unsupported "eager_"
+
   let lazy_ _ _ _ = unsupported "lazy_"
 
   let arbitrary_specialized_ _ _ _ _ = unsupported "arbitrary_specialized_"
 
   let arbitrary_domain_ _ _ _ _ = unsupported "arbitrary_domain_"
+
+  let eager_domain_ _ _ _ _ = unsupported "eager_domain_"
 
   let pick_ _ _ _ _ = unsupported "pick_"
 

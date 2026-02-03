@@ -14,8 +14,7 @@ module Make (AD : Domain.T) = struct
         let gt_rest, d = aux (Sym.Set.add x vars) gt_rest in
         (Term.let_star_ ((x, gt_inner), gt_rest) tag loc, d)
       | `LetStar
-          ((x, Annot ((`Arbitrary | `Symbolic), tag_inner, bt_inner, loc_inner)), gt_rest)
-        ->
+          ((x, Annot ((`Eager | `Symbolic), tag_inner, bt_inner, loc_inner)), gt_rest) ->
         let vars' = Sym.Set.add x vars in
         let gt_rest, d = aux vars' gt_rest in
         let d = AD.retain vars' d in
@@ -39,8 +38,7 @@ module Make (AD : Domain.T) = struct
         let gt_rest, d = aux vars gt_rest in
         (Term.instantiate_ ((x, gt_inner), gt_rest) tag loc, d)
       | `Instantiate
-          ((x, Annot ((`Arbitrary | `Symbolic), tag_inner, bt_inner, loc_inner)), gt_rest)
-        ->
+          ((x, Annot ((`Eager | `Symbolic), tag_inner, bt_inner, loc_inner)), gt_rest) ->
         let gt_rest, d = aux vars gt_rest in
         let d = AD.retain vars d in
         let gt_inner =
@@ -53,7 +51,7 @@ module Make (AD : Domain.T) = struct
         let gt' = Term.instantiate_ ((x, gt_inner), gt_rest) tag loc in
         (gt', d)
         (* The rest *)
-      | `Arbitrary | `Symbolic | `Lazy | `ArbitrarySpecialized _ | `ArbitraryDomain _
+      | `Eager | `Symbolic | `Lazy | `ArbitrarySpecialized _ | `ArbitraryDomain _
       | `Call _ | `Return _ ->
         (gt, AD.top)
       | `Pick gts ->

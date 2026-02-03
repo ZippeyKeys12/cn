@@ -132,7 +132,7 @@ module Make (AD : Domain.T) = struct
       in
       let (Annot (gt_, _, _, _)) = gt in
       match gt_ with
-      | `Arbitrary | `Symbolic | `Lazy | `ArbitrarySpecialized _ | `ArbitraryDomain _
+      | `Eager | `Symbolic | `Lazy | `ArbitrarySpecialized _ | `ArbitraryDomain _
       | `Call _ | `Return _ ->
         empty_rep
       | `Pick gts ->
@@ -170,7 +170,7 @@ module Make (AD : Domain.T) = struct
         Rep.intersect rep_inner rep_rest
 
 
-    (* Convert an Arbitrary term to ArbitrarySpecialized if we have constraints *)
+    (* Convert an Eager term to ArbitrarySpecialized if we have constraints *)
     let mk_arbitrary_specialized (v : Rep.t) (bt : BT.t) (loc : Locations.t) : Term.t =
       (* Only create arbitrary_specialized if at least one constraint exists *)
       if
@@ -188,25 +188,25 @@ module Make (AD : Domain.T) = struct
           bt
           loc)
       else
-        Term.arbitrary_ () bt loc (* No constraints, keep as Arbitrary *)
+        Term.eager_ () bt loc (* No constraints, keep as Eager *)
 
 
     let rec specialize (vars : Sym.Set.t) (gt : Term.t) : Term.t =
       let (Annot (gt_, _, bt, loc)) = gt in
       match gt_ with
-      | `Arbitrary | `Symbolic | `Lazy | `ArbitrarySpecialized _ | `ArbitraryDomain _
+      | `Eager | `Symbolic | `Lazy | `ArbitrarySpecialized _ | `ArbitraryDomain _
       | `Call _ | `Return _ ->
         gt
       | `Pick gts -> Term.pick_ (List.map (specialize vars) gts) () bt loc
       | `Asgn ((it_addr, sct), it_val, gt_rest) ->
         Term.asgn_ ((it_addr, sct), it_val, specialize vars gt_rest) () loc
-      | `LetStar ((x, Annot (`Arbitrary, _, bt_x, loc_x)), gt_rest)
+      | `LetStar ((x, Annot (`Eager, _, bt_x, loc_x)), gt_rest)
       (* Try to collect constraints for bits/loc types *)
         when BT.equal bt_x (BT.Loc ()) || Option.is_some (BT.is_bits_bt bt_x) ->
         let constraints = collect_and_extract_constraints vars x gt_rest in
         let gt_x = mk_arbitrary_specialized constraints bt_x loc_x in
         Term.let_star_ ((x, gt_x), specialize (Sym.Set.add x vars) gt_rest) () loc
-      | `Instantiate ((x, Annot (`Arbitrary, _, bt_x, loc_x)), gt_rest)
+      | `Instantiate ((x, Annot (`Eager, _, bt_x, loc_x)), gt_rest)
       (* Try to collect constraints for bits/loc types *)
         when BT.equal bt_x (BT.Loc ()) || Option.is_some (BT.is_bits_bt bt_x) ->
         let constraints = collect_and_extract_constraints vars x gt_rest in

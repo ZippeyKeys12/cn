@@ -18,7 +18,7 @@ module Make (AD : Domain.T) = struct
       let last_var = match vars with v :: _ -> v | [] -> bennet in
       let (GenTerms.Annot (gt_, (), bt, loc)) = gt in
       match gt_ with
-      | `Arbitrary -> GenTerms.Annot (`Arbitrary, (path_vars, last_var), bt, loc)
+      | `Eager -> GenTerms.Annot (`Eager, (path_vars, last_var), bt, loc)
       | `Symbolic -> GenTerms.Annot (`Symbolic, (path_vars, last_var), bt, loc)
       | `Lazy -> GenTerms.Annot (`Lazy, (path_vars, last_var), bt, loc)
       | `ArbitrarySpecialized bounds ->

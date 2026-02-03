@@ -15,7 +15,7 @@ module Make (AD : Domain.T) = struct
     let rec aux (gr : Stage4.Term.t) : int =
       let (Annot (gr_, (), _, _)) = gr in
       match gr_ with
-      | `Arbitrary | `Symbolic | `Lazy | `ArbitrarySpecialized _ | `ArbitraryDomain _
+      | `Eager | `Symbolic | `Lazy | `ArbitrarySpecialized _ | `ArbitraryDomain _
       | `Return _ ->
         0
       | `Pick choices -> choices |> List.map aux |> List.fold_left max 0
@@ -37,7 +37,7 @@ module Make (AD : Domain.T) = struct
     let rec aux (gr : Stage4.Term.t) : Term.t * Sym.Set.t =
       let (Annot (gr_, (), bt, loc)) = gr in
       match gr_ with
-      | `Arbitrary -> (GenTerms.Annot (`Arbitrary, (), bt, loc), Sym.Set.empty)
+      | `Eager -> (GenTerms.Annot (`Eager, (), bt, loc), Sym.Set.empty)
       | `Symbolic -> (GenTerms.Annot (`Symbolic, (), bt, loc), Sym.Set.empty)
       | `Lazy -> (GenTerms.Annot (`Lazy, (), bt, loc), Sym.Set.empty)
       | `ArbitrarySpecialized bounds ->

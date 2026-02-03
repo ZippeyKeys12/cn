@@ -54,11 +54,13 @@ module Make (GT : GenTerms.T) (I : Domain.T with type t = GT.AD.t) = struct
       let (GenTerms.Annot (tm_, tag, bt, loc)) = tm in
       match tm_ with
       | `Arbitrary -> (GT.arbitrary_ tag bt loc, [ d ])
+      | `Eager -> (GT.eager_ tag bt loc, [ d ])
       | `Symbolic -> (GT.symbolic_ tag bt loc, [ d ])
       | `Lazy -> (GT.lazy_ tag bt loc, [ d ])
       | `ArbitrarySpecialized bounds ->
         (GT.arbitrary_specialized_ bounds tag bt loc, [ d ])
       | `ArbitraryDomain _ -> failwith ("unreachable @ " ^ __LOC__)
+      | `EagerDomain _ -> failwith ("unreachable @ " ^ __LOC__)
       | `Return _ ->
         let tm' = if should_assert then GT.assert_domain_ (d, tm) tag loc else tm in
         (tm', [ d ])

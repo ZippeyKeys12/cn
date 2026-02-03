@@ -10,7 +10,7 @@ module Make (AD : Domain.T) = struct
     let (Annot (gt_, (), bt, loc)) = gt in
     let gt_ =
       match gt_ with
-      | `Arbitrary -> `Arbitrary
+      | `Eager -> `Eager
       | `Symbolic -> `Symbolic
       | `Lazy -> `Lazy
       | `Call (fsym, args) -> `Call (fsym, args)

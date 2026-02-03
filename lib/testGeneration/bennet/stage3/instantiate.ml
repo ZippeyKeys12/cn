@@ -29,7 +29,7 @@ module Make (AD : Domain.T) = struct
     | `Pick _ -> Sym.Map.empty
     | `Instantiate _ -> failwith ("unreachable @ " ^ __LOC__)
     | `Return it -> IT.free_vars_bts it
-    | `Arbitrary | `Symbolic | `Lazy -> Sym.Map.empty
+    | `Eager | `Symbolic | `Lazy -> Sym.Map.empty
     | `Call (_fsym, iargs) ->
       iargs
       |> List.filter (fun it -> Option.is_none (IT.is_sym it))
@@ -55,7 +55,7 @@ module Make (AD : Domain.T) = struct
       (* Recursively transform sub-terms with updated instantiated set *)
       let transformed_gt_ =
         match gt_ with
-        | `Arbitrary -> `Arbitrary
+        | `Eager -> `Eager
         | `Symbolic -> `Symbolic
         | `Lazy -> `Lazy
         | `Call (fsym, its) -> `Call (fsym, its)
@@ -63,12 +63,12 @@ module Make (AD : Domain.T) = struct
         | `Asgn ((addr, sct), it, gt') -> `Asgn ((addr, sct), it, aux instantiated' gt')
         | `LetStar ((x, gt1), gt2) ->
           (* Only mark x as instantiated if gt1 produces a concrete value.
-             If gt1 is Arbitrary or Symbolic (lazy placeholders), x still needs
+             If gt1 is Eager or Symbolic (lazy placeholders), x still needs
              an instantiate before its first use in the continuation. *)
           let next_instantiated =
             match gt1 with
             | GenTerms.Annot (`Lazy, _, _, _) -> instantiated'
-            | GenTerms.Annot (`Arbitrary, _, _, _)
+            | GenTerms.Annot (`Eager, _, _, _)
             | Annot ((`Call _ | `Return _ | `Map _), _, _, _) ->
               Sym.Set.add x instantiated'
             | GenTerms.Annot (`Symbolic, _, _, _) -> failwith ("unsupported @ " ^ __LOC__)
@@ -92,7 +92,7 @@ module Make (AD : Domain.T) = struct
       (* Insert Instantiate nodes for newly used variables *)
       Sym.Map.fold
         (fun x inst_bt acc ->
-           Term.instantiate_ ((x, Term.arbitrary_ tag inst_bt loc), acc) tag loc)
+           Term.instantiate_ ((x, Term.eager_ tag inst_bt loc), acc) tag loc)
         to_instantiate
         transformed
     in

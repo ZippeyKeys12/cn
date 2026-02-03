@@ -12,8 +12,7 @@ module Make (AD : Domain.T) = struct
       let open Option in
       let (Annot (gt_, (), _, loc)) = gt in
       match gt_ with
-      | `Arbitrary | `Symbolic | `Lazy | `Pick _ | `Call _ | `Return _ | `ITE _ | `Map _
-        ->
+      | `Eager | `Symbolic | `Lazy | `Pick _ | `Call _ | `Return _ | `ITE _ | `Map _ ->
         None
       | `Asgn ((it_addr, sct), it_val, gt_rest) ->
         let@ gt_rest, it = aux gt_rest in
@@ -50,11 +49,11 @@ module Make (AD : Domain.T) = struct
     let rec aux (vars : Sym.Set.t) (gt : Term.t) : Term.t =
       let (Annot (gt_, (), bt, loc)) = gt in
       match gt_ with
-      | `Arbitrary | `Symbolic | `Lazy | `Call _ | `Return _ -> gt
+      | `Eager | `Symbolic | `Lazy | `Call _ | `Return _ -> gt
       | `Pick gts -> Term.pick_ (List.map (aux vars) gts) () bt loc
       | `Asgn ((it_addr, sct), it_val, gt_rest) ->
         Term.asgn_ ((it_addr, sct), it_val, aux vars gt_rest) () loc
-      | `LetStar ((x, (Annot (`Arbitrary, (), _, loc) as gt_inner)), gt_rest)
+      | `LetStar ((x, (Annot (`Eager, (), _, loc) as gt_inner)), gt_rest)
       | `LetStar ((x, (Annot (`Lazy, (), _, loc) as gt_inner)), gt_rest) ->
         let gt_rest, gt_res =
           match find_constraint vars x gt_rest with
@@ -69,7 +68,7 @@ module Make (AD : Domain.T) = struct
         Term.ite_ (it_if, aux vars gt_then, aux vars gt_else) () loc
       | `Map ((i, i_bt, it_perm), gt_inner) ->
         Term.map_ ((i, i_bt, it_perm), aux (Sym.Set.add i vars) gt_inner) () loc
-      | `Instantiate ((x, (Annot (`Arbitrary, (), _, loc) as gt_inner)), gt_rest)
+      | `Instantiate ((x, (Annot (`Eager, (), _, loc) as gt_inner)), gt_rest)
       | `Instantiate ((x, (Annot (`Lazy, (), _, loc) as gt_inner)), gt_rest) ->
         let gt_rest, gt_res =
           match find_constraint vars x gt_rest with

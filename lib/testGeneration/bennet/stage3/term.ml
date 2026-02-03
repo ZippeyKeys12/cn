@@ -13,7 +13,7 @@ module Make (AD : Domain.T) = struct
       type 'ast annot = (unit, 'ast) GenTerms.annot [@@deriving eq, ord]
 
       type 'recur ast =
-        [ `Arbitrary (** Generate arbitrary values *)
+        [ `Eager (** Eagerly generate values *)
         | `Symbolic (** Generate symbolic values *)
         | `Lazy (** Lazily generate values *)
         | `Call of Sym.t * IT.t list
@@ -38,18 +38,18 @@ module Make (AD : Domain.T) = struct
 
       let basetype (GenTerms.Annot (_, _, bt, _) : t) : BT.t = bt
 
-      let arbitrary_ (tag : tag_t) (bt : BT.t) (loc : Locations.t) : t =
-        Annot (`Arbitrary, tag, bt, loc)
+      (* Include defaults for all unsupported smart constructors *)
+      include GenTerms.Defaults (struct
+          let name = "Stage 3"
+        end)
+
+      let eager_ (tag : tag_t) (bt : BT.t) (loc : Locations.t) : t =
+        Annot (`Eager, tag, bt, loc)
 
 
       let symbolic_ (tag : tag_t) (bt : BT.t) (loc : Locations.t) : t =
         Annot (`Symbolic, tag, bt, loc)
 
-
-      (* Include defaults for all unsupported smart constructors *)
-      include GenTerms.Defaults (struct
-          let name = "Stage 3"
-        end)
 
       let lazy_ (tag : tag_t) (bt : BT.t) (loc : Locations.t) : t =
         Annot (`Lazy, tag, bt, loc)
