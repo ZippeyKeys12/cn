@@ -37,6 +37,13 @@ void bennet_lazy_new(void* ptr) {
   bennet_hash_table_set(void_ptr, use_flag)(&lazy_table, ptr, false);
 }
 
+void bennet_lazy_delete(void* ptr) {
+  assert(lazy_initialized);
+  assert(bennet_hash_table_contains(void_ptr, use_flag)(&lazy_table, ptr));
+
+  bennet_hash_table_delete(void_ptr, use_flag)(&lazy_table, ptr);
+}
+
 bool bennet_lazy_mark(void* ptr) {
   assert(lazy_initialized);
   assert(bennet_hash_table_contains(void_ptr, use_flag)(&lazy_table, ptr));

@@ -16,6 +16,14 @@ extern "C" {
 void bennet_lazy_new(void* ptr);
 
 /**
+ * Unregister a pointer from lazy tracking.
+ * Asserts that the pointer was previously registered with bennet_lazy_new.
+ *
+ * @param ptr The pointer to stop tracking
+ */
+void bennet_lazy_delete(void* ptr);
+
+/**
  * Mark a tracked pointer as used.
  * Asserts that the pointer was previously registered with bennet_lazy_new.
  *

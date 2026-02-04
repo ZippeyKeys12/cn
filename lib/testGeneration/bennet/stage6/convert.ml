@@ -64,10 +64,6 @@ module Make (AD : Domain.T) = struct
             (`Asgn ((it_addr, sct), it_val, aux vars path_vars gt_rest))
         in
         GenTerms.Annot (gt_, (path_vars, last_var), bt, loc)
-      | `LetStar ((x, (Annot (`Lazy, _, _, _) as gt_inner)), gt_rest) ->
-        let gt_inner = aux vars path_vars gt_inner in
-        let gt_rest = aux vars path_vars gt_rest in
-        GenTerms.Annot (`LetStar ((x, gt_inner), gt_rest), (path_vars, last_var), bt, loc)
       | `LetStar ((x, gt_inner), gt_rest) ->
         let gt_inner = aux vars path_vars gt_inner in
         let gt_rest = aux (x :: vars) path_vars gt_rest in

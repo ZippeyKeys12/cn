@@ -468,8 +468,10 @@ module Make (AD : Domain.T) = struct
             (mk_expr
                (AilEcall
                   ( mk_expr (string_ident "BENNET_LET_LAZY"),
-                    [ mk_expr (AilEident (Sym.fresh cn_ty_str)); mk_expr (AilEident x) ]
-                  )))
+                    [ mk_expr (AilEident (Sym.fresh cn_ty_str));
+                      mk_expr (AilEident x);
+                      mk_expr (AilEident last_var)
+                    ] )))
         ]
       in
       let b_rest, s_rest, e_rest = transform_term filename sigma ctx name gt_rest in
@@ -620,7 +622,8 @@ module Make (AD : Domain.T) = struct
                (AilEcall
                   ( mk_expr (string_ident "BENNET_LET_LAZY"),
                     [ mk_expr (AilEident (Sym.fresh "cn_pointer"));
-                      mk_expr (AilEident x)
+                      mk_expr (AilEident x);
+                      mk_expr (AilEident last_var)
                     ] )))
         ]
       in

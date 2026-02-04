@@ -419,9 +419,17 @@
     }                                                                                    \
   }
 
-#define BENNET_LET_LAZY(cn_ty, var)                                                      \
+#define BENNET_LET_LAZY(cn_ty, var, last_var)                                            \
   cn_ty* var = cn_bump_malloc(sizeof(cn_ty));                                            \
-  bennet_lazy_new(var);
+  bennet_lazy_new(var);                                                                  \
+  if (0) {                                                                               \
+    bennet_label_##var##_backtrack :;                                                    \
+    BENNET_CHECK_TIMEOUT();                                                              \
+                                                                                         \
+    bennet_lazy_delete(var);                                                             \
+                                                                                         \
+    goto bennet_label_##last_var##_backtrack;                                            \
+  }
 
 #define BENNET_FORCE_ARBITRARY_DOMAIN(                                                   \
     backtracks, backtrack_var, cn_ty, c_ty, var, last_var, ...)                          \
