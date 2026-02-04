@@ -64,6 +64,7 @@ let run_tests
       experimental_learning
       experimental_arg_pruning
       experimental_return_pruning
+      ad_pruning
       static_absint
       local_iterations
       smt_pruning_before_absinst
@@ -141,6 +142,7 @@ let run_tests
           experimental_learning;
           experimental_arg_pruning;
           experimental_return_pruning;
+          ad_pruning;
           static_absint;
           local_iterations;
           smt_pruning_before_absinst;
@@ -609,6 +611,11 @@ module Flags = struct
     Arg.(value & flag & info [ "experimental-return-pruning" ] ~doc)
 
 
+  let ad_pruning =
+    let doc = "Enable abstract domain-based pruning" in
+    Arg.(value & flag & info [ "ad-pruning" ] ~doc)
+
+
   let smt_pruning_before_absinst =
     let doc =
       "(Experimental) Use SMT solver to prune unsatisfiable branches before abstract \
@@ -843,6 +850,7 @@ let cmd =
     $ Flags.experimental_learning
     $ Flags.experimental_arg_pruning
     $ Flags.experimental_return_pruning
+    $ Flags.ad_pruning
     $ Flags.static_absint
     $ Flags.local_iterations
     $ Flags.smt_pruning_before_absinst
