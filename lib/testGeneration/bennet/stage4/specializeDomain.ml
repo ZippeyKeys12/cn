@@ -34,11 +34,11 @@ module Make (AD : Domain.T) = struct
           (Term.assert_domain_ (d_remove_x, gt') tag loc, d_remove_x)
         else
           (gt', d)
-      | `Instantiate ((x, (Annot (`Lazy, _, _, _) as gt_inner)), gt_rest) ->
+      | `Force ((x, (Annot (`Lazy, _, _, _) as gt_inner)), gt_rest) ->
         let gt_rest, d = aux vars gt_rest in
-        (Term.instantiate_ ((x, gt_inner), gt_rest) tag loc, d)
-      | `Instantiate
-          ((x, Annot ((`Eager | `Symbolic), tag_inner, bt_inner, loc_inner)), gt_rest) ->
+        (Term.force_ ((x, gt_inner), gt_rest) tag loc, d)
+      | `Force ((x, Annot ((`Eager | `Symbolic), tag_inner, bt_inner, loc_inner)), gt_rest)
+        ->
         let gt_rest, d = aux vars gt_rest in
         let d = AD.retain vars d in
         let gt_inner =
@@ -48,7 +48,7 @@ module Make (AD : Domain.T) = struct
             bt_inner
             loc_inner
         in
-        let gt' = Term.instantiate_ ((x, gt_inner), gt_rest) tag loc in
+        let gt' = Term.force_ ((x, gt_inner), gt_rest) tag loc in
         (gt', d)
         (* The rest *)
       | `Eager | `Symbolic | `Lazy | `ArbitrarySpecialized _ | `ArbitraryDomain _
@@ -75,10 +75,10 @@ module Make (AD : Domain.T) = struct
       | `Map ((i, i_bt, it_perm), gt_inner) ->
         let gt_inner, d = aux (Sym.Set.add i vars) gt_inner in
         (Term.map_ ((i, i_bt, it_perm), gt_inner) tag loc, AD.remove i d)
-      | `Instantiate ((x, gt_inner), gt_rest) ->
+      | `Force ((x, gt_inner), gt_rest) ->
         let gt_inner, _ = aux vars gt_inner in
         let gt_rest, d = aux vars gt_rest in
-        (Term.instantiate_ ((x, gt_inner), gt_rest) tag loc, d)
+        (Term.force_ ((x, gt_inner), gt_rest) tag loc, d)
     in
     fst (aux vars gt)
 

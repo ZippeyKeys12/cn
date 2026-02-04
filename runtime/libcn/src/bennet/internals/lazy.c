@@ -60,7 +60,7 @@ void bennet_lazy_unmark(void* ptr) {
   bennet_hash_table_set(void_ptr, use_flag)(&lazy_table, ptr, false);
 }
 
-bool bennet_lazy_is_instantiated(void* ptr) {
+bool bennet_lazy_is_forced(void* ptr) {
   if (!lazy_initialized ||
       !bennet_hash_table_contains(void_ptr, use_flag)(&lazy_table, ptr)) {
     // Not lazy, so must be concrete

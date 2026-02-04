@@ -25,8 +25,8 @@ module Make (AD : Domain.T) = struct
       | `Map ((i_sym, i_bt, it_perm), gt_inner) ->
         `Map ((i_sym, i_bt, it_perm), transform_gt gt_inner)
       | `Pick gts -> `Pick (List.map transform_gt gts)
-      | `Instantiate ((x, gt_inner), gt_rest) ->
-        `Instantiate ((x, transform_gt gt_inner), transform_gt gt_rest)
+      | `Force ((x, gt_inner), gt_rest) ->
+        `Force ((x, transform_gt gt_inner), transform_gt gt_rest)
     in
     Annot (gt_, (), bt, loc)
 

@@ -164,7 +164,7 @@ module Make (AD : Domain.T) = struct
         let rep_else = collect_and_extract_constraints vars x gt_else in
         Rep.intersect rep_then rep_else
       | `Map (_, gt_inner) -> collect_and_extract_constraints vars x gt_inner
-      | `Instantiate ((y, gt_inner), gt_rest) ->
+      | `Force ((y, gt_inner), gt_rest) ->
         let rep_inner = collect_and_extract_constraints vars x gt_inner in
         let rep_rest = collect_and_extract_constraints (Sym.Set.add y vars) x gt_rest in
         Rep.intersect rep_inner rep_rest
@@ -206,12 +206,12 @@ module Make (AD : Domain.T) = struct
         let constraints = collect_and_extract_constraints vars x gt_rest in
         let gt_x = mk_arbitrary_specialized constraints bt_x loc_x in
         Term.let_star_ ((x, gt_x), specialize (Sym.Set.add x vars) gt_rest) () loc
-      | `Instantiate ((x, Annot (`Eager, _, bt_x, loc_x)), gt_rest)
+      | `Force ((x, Annot (`Eager, _, bt_x, loc_x)), gt_rest)
       (* Try to collect constraints for bits/loc types *)
         when BT.equal bt_x (BT.Loc ()) || Option.is_some (BT.is_bits_bt bt_x) ->
         let constraints = collect_and_extract_constraints vars x gt_rest in
         let gt_x = mk_arbitrary_specialized constraints bt_x loc_x in
-        Term.instantiate_ ((x, gt_x), specialize vars gt_rest) () loc
+        Term.force_ ((x, gt_x), specialize vars gt_rest) () loc
       | `LetStar ((x, gt_inner), gt_rest) ->
         Term.let_star_
           ((x, specialize vars gt_inner), specialize (Sym.Set.add x vars) gt_rest)
@@ -227,8 +227,8 @@ module Make (AD : Domain.T) = struct
           ((i_sym, i_bt, it_perm), specialize (Sym.Set.add i_sym vars) gt_inner)
           ()
           loc
-      | `Instantiate ((y, gt_inner), gt_rest) ->
-        Term.instantiate_ ((y, specialize vars gt_inner), specialize vars gt_rest) () loc
+      | `Force ((y, gt_inner), gt_rest) ->
+        Term.force_ ((y, specialize vars gt_inner), specialize vars gt_rest) () loc
 
 
     let transform_def (gd : Def.t) : Def.t =

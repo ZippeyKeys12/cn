@@ -8,7 +8,7 @@ module Make (AD : Domain.T) = struct
   module Term = Term.Make (AD)
 
   (** Compute free vars of only the immediate expression, not continuations.
-      This prevents variables from being instantiated too early.
+      This prevents variables from being forced too early.
       Adapted for pre-elaboration AST (Stage 2 constructs). *)
   let rec immediate_fv_bts (gt : Term.t) : BT.t Sym.Map.t =
     let (GenTerms.Annot (gt_, _, _, _)) = gt in
@@ -27,7 +27,7 @@ module Make (AD : Domain.T) = struct
            (IT.free_vars_bts it_perm)
            (Term.free_vars_bts gt_body))
     | `Pick _ -> Sym.Map.empty
-    | `Instantiate _ -> failwith ("unreachable @ " ^ __LOC__)
+    | `Force _ -> failwith ("unreachable @ " ^ __LOC__)
     | `Return it -> IT.free_vars_bts it
     | `Eager | `Symbolic | `Lazy -> Sym.Map.empty
     | `Call (_fsym, iargs) ->
@@ -37,22 +37,18 @@ module Make (AD : Domain.T) = struct
 
 
   let transform_gt (gt : Term.t) : Term.t =
-    let rec aux (instantiated : Sym.Set.t) (gt : Term.t) : Term.t =
+    let rec aux (forced : Sym.Set.t) (gt : Term.t) : Term.t =
       let (GenTerms.Annot (gt_, tag, _bt, loc)) = gt in
       (* Identify which variables appear in the immediate expression *)
       let fv_bts = immediate_fv_bts gt in
-      let newly_used =
-        fv_bts |> Sym.Map.filter (fun x _ -> not (Sym.Set.mem x instantiated))
-      in
-      (* Only create Instantiate nodes for types that could be lazy *)
-      let to_instantiate =
+      let newly_used = fv_bts |> Sym.Map.filter (fun x _ -> not (Sym.Set.mem x forced)) in
+      (* Only create Force nodes for types that could be lazy *)
+      let to_force =
         newly_used |> Sym.Map.filter (fun _ -> Term.is_arbitrary_supported_bt)
       in
-      (* Mark ALL newly used variables as instantiated (including unsupported types) *)
-      let instantiated' =
-        Sym.Map.fold (fun x _ acc -> Sym.Set.add x acc) newly_used instantiated
-      in
-      (* Recursively transform sub-terms with updated instantiated set *)
+      (* Mark ALL newly used variables as forced (including unsupported types) *)
+      let forced' = Sym.Map.fold (fun x _ acc -> Sym.Set.add x acc) newly_used forced in
+      (* Recursively transform sub-terms with updated forced set *)
       let transformed_gt_ =
         match gt_ with
         | `Eager -> `Eager
@@ -60,40 +56,39 @@ module Make (AD : Domain.T) = struct
         | `Lazy -> `Lazy
         | `Call (fsym, its) -> `Call (fsym, its)
         | `Return it -> `Return it
-        | `Asgn ((addr, sct), it, gt') -> `Asgn ((addr, sct), it, aux instantiated' gt')
+        | `Asgn ((addr, sct), it, gt') -> `Asgn ((addr, sct), it, aux forced' gt')
         | `LetStar ((x, gt1), gt2) ->
-          (* Only mark x as instantiated if gt1 produces a concrete value.
+          (* Only mark x as forced if gt1 produces a concrete value.
              If gt1 is Eager or Symbolic (lazy placeholders), x still needs
-             an instantiate before its first use in the continuation. *)
-          let next_instantiated =
+             a force before its first use in the continuation. *)
+          let next_forced =
             match gt1 with
-            | GenTerms.Annot (`Lazy, _, _, _) -> instantiated'
+            | GenTerms.Annot (`Lazy, _, _, _) -> forced'
             | GenTerms.Annot (`Eager, _, _, _)
             | Annot ((`Call _ | `Return _ | `Map _), _, _, _) ->
-              Sym.Set.add x instantiated'
+              Sym.Set.add x forced'
             | GenTerms.Annot (`Symbolic, _, _, _) -> failwith ("unsupported @ " ^ __LOC__)
             | _ -> failwith ("unreachable @ " ^ __LOC__)
           in
-          `LetStar ((x, gt1), aux next_instantiated gt2)
-        | `Assert (lc, gt') -> `Assert (lc, aux instantiated' gt')
+          `LetStar ((x, gt1), aux next_forced gt2)
+        | `Assert (lc, gt') -> `Assert (lc, aux forced' gt')
         | `ITE (it, gt_then, gt_else) ->
-          (* Both branches see the same variables as instantiated *)
-          `ITE (it, aux instantiated' gt_then, aux instantiated' gt_else)
+          (* Both branches see the same variables as forced *)
+          `ITE (it, aux forced' gt_then, aux forced' gt_else)
         | `Map ((i, bt, perm), gt') ->
-          `Map ((i, bt, perm), aux (Sym.Set.add i instantiated') gt')
+          `Map ((i, bt, perm), aux (Sym.Set.add i forced') gt')
         | `Pick choices ->
-          (* All choices see the same variables as instantiated *)
-          `Pick (List.map (aux instantiated') choices)
-        | `Instantiate ((x, gt_inner), gt_rest) ->
-          (* Mark x as instantiated for the continuation *)
-          `Instantiate ((x, gt_inner), aux (Sym.Set.add x instantiated') gt_rest)
+          (* All choices see the same variables as forced *)
+          `Pick (List.map (aux forced') choices)
+        | `Force ((x, gt_inner), gt_rest) ->
+          (* Mark x as forced for the continuation *)
+          `Force ((x, gt_inner), aux (Sym.Set.add x forced') gt_rest)
       in
       let transformed = GenTerms.Annot (transformed_gt_, tag, Term.basetype gt, loc) in
-      (* Insert Instantiate nodes for newly used variables *)
+      (* Insert Force nodes for newly used variables *)
       Sym.Map.fold
-        (fun x inst_bt acc ->
-           Term.instantiate_ ((x, Term.eager_ tag inst_bt loc), acc) tag loc)
-        to_instantiate
+        (fun x inst_bt acc -> Term.force_ ((x, Term.eager_ tag inst_bt loc), acc) tag loc)
+        to_force
         transformed
     in
     aux Sym.Set.empty gt

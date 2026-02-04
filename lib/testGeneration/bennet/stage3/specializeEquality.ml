@@ -38,9 +38,9 @@ module Make (AD : Domain.T) = struct
       | `Assert (lc, gt_rest) ->
         let@ gt_rest, it = aux gt_rest in
         return (Term.assert_ (lc, gt_rest) () loc, it)
-      | `Instantiate ((y, gt_inner), gt_rest) ->
+      | `Force ((y, gt_inner), gt_rest) ->
         let@ gt_rest, it = aux gt_rest in
-        return (Term.instantiate_ ((y, gt_inner), gt_rest) () loc, it)
+        return (Term.force_ ((y, gt_inner), gt_rest) () loc, it)
     in
     aux gt
 
@@ -68,19 +68,16 @@ module Make (AD : Domain.T) = struct
         Term.ite_ (it_if, aux vars gt_then, aux vars gt_else) () loc
       | `Map ((i, i_bt, it_perm), gt_inner) ->
         Term.map_ ((i, i_bt, it_perm), aux (Sym.Set.add i vars) gt_inner) () loc
-      | `Instantiate ((x, (Annot (`Eager, (), _, loc) as gt_inner)), gt_rest)
-      | `Instantiate ((x, (Annot (`Lazy, (), _, loc) as gt_inner)), gt_rest) ->
+      | `Force ((x, (Annot (`Eager, (), _, loc) as gt_inner)), gt_rest)
+      | `Force ((x, (Annot (`Lazy, (), _, loc) as gt_inner)), gt_rest) ->
         let gt_rest, gt_res =
           match find_constraint vars x gt_rest with
           | Some (gt_rest, it) -> (gt_rest, Term.return_ it () loc)
           | None -> (gt_rest, gt_inner)
         in
-        Term.instantiate_ ((x, gt_res), aux (Sym.Set.add x vars) gt_rest) () loc
-      | `Instantiate ((y, gt_inner), gt_rest) ->
-        Term.instantiate_
-          ((y, aux vars gt_inner), aux (Sym.Set.add y vars) gt_rest)
-          ()
-          loc
+        Term.force_ ((x, gt_res), aux (Sym.Set.add x vars) gt_rest) () loc
+      | `Force ((y, gt_inner), gt_rest) ->
+        Term.force_ ((y, aux vars gt_inner), aux (Sym.Set.add y vars) gt_rest) () loc
     in
     aux vars gt
 

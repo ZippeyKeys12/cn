@@ -423,10 +423,10 @@
   cn_ty* var = cn_bump_malloc(sizeof(cn_ty));                                            \
   bennet_lazy_new(var);
 
-#define BENNET_INSTANTIATE_ARBITRARY_DOMAIN(                                             \
+#define BENNET_FORCE_ARBITRARY_DOMAIN(                                                   \
     backtracks, backtrack_var, cn_ty, c_ty, var, last_var, ...)                          \
-  bool var##_instantiated_here = !bennet_lazy_is_instantiated(var);                      \
-  if (!var##_instantiated_here) {                                                        \
+  bool var##_forced_here = !bennet_lazy_is_forced(var);                                  \
+  if (!var##_forced_here) {                                                              \
     goto bennet_label_##backtrack_var##_skip;                                            \
     /* Means following variables aren't used */                                          \
   }                                                                                      \
@@ -456,7 +456,7 @@
     bennet_label_##backtrack_var##_backtrack :;                                          \
     BENNET_CHECK_TIMEOUT();                                                              \
                                                                                          \
-    if (!var##_instantiated_here) {                                                      \
+    if (!var##_forced_here) {                                                            \
       goto bennet_label_##last_var##_backtrack;                                          \
     }                                                                                    \
                                                                                          \
@@ -480,14 +480,14 @@
                                                                                          \
   bennet_label_##backtrack_var##_skip :;
 
-#define BENNET_INSTANTIATE_ARBITRARY_DOMAIN_POINTER(                                     \
+#define BENNET_FORCE_ARBITRARY_DOMAIN_POINTER(                                           \
     backtracks, backtrack_var, var, last_var, ...)                                       \
-  BENNET_INSTANTIATE_ARBITRARY_DOMAIN(                                                   \
+  BENNET_FORCE_ARBITRARY_DOMAIN(                                                         \
       backtracks, backtrack_var, cn_pointer, uintptr_t, var, last_var, __VA_ARGS__)
 
-#define BENNET_INSTANTIATE_ARBITRARY_DOMAIN_UNSIGNED(                                    \
+#define BENNET_FORCE_ARBITRARY_DOMAIN_UNSIGNED(                                          \
     backtracks, backtrack_var, bits, var, last_var, ...)                                 \
-  BENNET_INSTANTIATE_ARBITRARY_DOMAIN(backtracks,                                        \
+  BENNET_FORCE_ARBITRARY_DOMAIN(backtracks,                                              \
       backtrack_var,                                                                     \
       cn_bits_u##bits,                                                                   \
       uint##bits##_t,                                                                    \
@@ -495,9 +495,9 @@
       last_var,                                                                          \
       __VA_ARGS__)
 
-#define BENNET_INSTANTIATE_ARBITRARY_DOMAIN_SIGNED(                                      \
+#define BENNET_FORCE_ARBITRARY_DOMAIN_SIGNED(                                            \
     backtracks, backtrack_var, bits, var, last_var, ...)                                 \
-  BENNET_INSTANTIATE_ARBITRARY_DOMAIN(backtracks,                                        \
+  BENNET_FORCE_ARBITRARY_DOMAIN(backtracks,                                              \
       backtrack_var,                                                                     \
       cn_bits_i##bits,                                                                   \
       int##bits##_t,                                                                     \
@@ -505,26 +505,22 @@
       last_var,                                                                          \
       __VA_ARGS__)
 
-#define BENNET_INSTANTIATE_ARBITRARY(                                                    \
-    backtracks, backtrack_var, cn_ty, c_ty, var, last_var)                               \
-  BENNET_INSTANTIATE_ARBITRARY_DOMAIN(                                                   \
+#define BENNET_FORCE_ARBITRARY(backtracks, backtrack_var, cn_ty, c_ty, var, last_var)    \
+  BENNET_FORCE_ARBITRARY_DOMAIN(                                                         \
       backtracks, backtrack_var, cn_ty, c_ty, var, last_var, bennet_domain_top(c_ty))
 
-#define BENNET_INSTANTIATE_ARBITRARY_POINTER(backtracks, backtrack_var, var, last_var)   \
-  BENNET_INSTANTIATE_ARBITRARY(                                                          \
-      backtracks, backtrack_var, cn_pointer, uintptr_t, var, last_var)
+#define BENNET_FORCE_ARBITRARY_POINTER(backtracks, backtrack_var, var, last_var)         \
+  BENNET_FORCE_ARBITRARY(backtracks, backtrack_var, cn_pointer, uintptr_t, var, last_var)
 
-#define BENNET_INSTANTIATE_ARBITRARY_UNSIGNED(                                           \
-    backtracks, backtrack_var, bits, var, last_var)                                      \
-  BENNET_INSTANTIATE_ARBITRARY(                                                          \
+#define BENNET_FORCE_ARBITRARY_UNSIGNED(backtracks, backtrack_var, bits, var, last_var)  \
+  BENNET_FORCE_ARBITRARY(                                                                \
       backtracks, backtrack_var, cn_bits_u##bits, uint##bits##_t, var, last_var)
 
-#define BENNET_INSTANTIATE_ARBITRARY_SIGNED(                                             \
-    backtracks, backtrack_var, bits, var, last_var)                                      \
-  BENNET_INSTANTIATE_ARBITRARY(                                                          \
+#define BENNET_FORCE_ARBITRARY_SIGNED(backtracks, backtrack_var, bits, var, last_var)    \
+  BENNET_FORCE_ARBITRARY(                                                                \
       backtracks, backtrack_var, cn_bits_i##bits, int##bits##_t, var, last_var)
 
-#define BENNET_INSTANTIATE_SPECIALIZED(backtracks,                                       \
+#define BENNET_FORCE_SPECIALIZED(backtracks,                                             \
     backtrack_var,                                                                       \
     cn_ty,                                                                               \
     c_ty,                                                                                \
@@ -536,8 +532,8 @@
     upper_bound_ex,                                                                      \
     ...)                                                                                 \
                                                                                          \
-  bool var##_instantiated_here = !bennet_lazy_is_instantiated(var);                      \
-  if (!var##_instantiated_here) {                                                        \
+  bool var##_forced_here = !bennet_lazy_is_forced(var);                                  \
+  if (!var##_forced_here) {                                                              \
     goto bennet_label_##backtrack_var##_skip;                                            \
     /* Means following variables aren't used */                                          \
   }                                                                                      \
@@ -570,7 +566,7 @@
     bennet_label_##backtrack_var##_backtrack :;                                          \
     BENNET_CHECK_TIMEOUT();                                                              \
                                                                                          \
-    if (!var##_instantiated_here) {                                                      \
+    if (!var##_forced_here) {                                                            \
       goto bennet_label_##last_var##_backtrack;                                          \
     }                                                                                    \
                                                                                          \
@@ -591,7 +587,7 @@
                                                                                          \
   bennet_label_##backtrack_var##_skip :;
 
-#define BENNET_INSTANTIATE_SPECIALIZED_UNSIGNED(backtracks,                              \
+#define BENNET_FORCE_SPECIALIZED_UNSIGNED(backtracks,                                    \
     backtrack_var,                                                                       \
     bits,                                                                                \
     var,                                                                                 \
@@ -601,7 +597,7 @@
     upper_bound_inc,                                                                     \
     upper_bound_ex,                                                                      \
     ...)                                                                                 \
-  BENNET_INSTANTIATE_SPECIALIZED(backtracks,                                             \
+  BENNET_FORCE_SPECIALIZED(backtracks,                                                   \
       backtrack_var,                                                                     \
       cn_bits_u##bits,                                                                   \
       uint##bits##_t,                                                                    \
@@ -613,7 +609,7 @@
       upper_bound_ex,                                                                    \
       __VA_ARGS__)
 
-#define BENNET_INSTANTIATE_SPECIALIZED_SIGNED(backtracks,                                \
+#define BENNET_FORCE_SPECIALIZED_SIGNED(backtracks,                                      \
     backtrack_var,                                                                       \
     bits,                                                                                \
     var,                                                                                 \
@@ -623,7 +619,7 @@
     upper_bound_inc,                                                                     \
     upper_bound_ex,                                                                      \
     ...)                                                                                 \
-  BENNET_INSTANTIATE_SPECIALIZED(backtracks,                                             \
+  BENNET_FORCE_SPECIALIZED(backtracks,                                                   \
       backtrack_var,                                                                     \
       cn_bits_i##bits,                                                                   \
       int##bits##_t,                                                                     \
@@ -635,7 +631,7 @@
       upper_bound_ex,                                                                    \
       __VA_ARGS__)
 
-#define BENNET_INSTANTIATE_SPECIALIZED_POINTER(backtracks,                               \
+#define BENNET_FORCE_SPECIALIZED_POINTER(backtracks,                                     \
     backtrack_var,                                                                       \
     var,                                                                                 \
     last_var,                                                                            \
@@ -644,7 +640,7 @@
     upper_bound_inc,                                                                     \
     upper_bound_ex,                                                                      \
     ...)                                                                                 \
-  BENNET_INSTANTIATE_SPECIALIZED(backtracks,                                             \
+  BENNET_FORCE_SPECIALIZED(backtracks,                                                   \
       backtrack_var,                                                                     \
       cn_pointer,                                                                        \
       cn_pointer,                                                                        \
@@ -656,9 +652,9 @@
       upper_bound_ex,                                                                    \
       __VA_ARGS__)
 
-#define BENNET_INSTANTIATE_RETURN(backtrack_var, ty, var, expr, last_var, ...)           \
-  bool var##_instantiated_here = !bennet_lazy_is_instantiated(var);                      \
-  if (!var##_instantiated_here) {                                                        \
+#define BENNET_FORCE_RETURN(backtrack_var, ty, var, expr, last_var, ...)                 \
+  bool var##_forced_here = !bennet_lazy_is_forced(var);                                  \
+  if (!var##_forced_here) {                                                              \
     goto bennet_label_##backtrack_var##_skip;                                            \
     /* Means following variables aren't used */                                          \
   }                                                                                      \
@@ -670,7 +666,7 @@
     bennet_label_##backtrack_var##_backtrack :;                                          \
     BENNET_CHECK_TIMEOUT();                                                              \
                                                                                          \
-    if (!var##_instantiated_here) {                                                      \
+    if (!var##_forced_here) {                                                            \
       goto bennet_label_##last_var##_backtrack;                                          \
     }                                                                                    \
                                                                                          \

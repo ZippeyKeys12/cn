@@ -62,7 +62,7 @@ module Make (AD : Domain.T) = struct
       ^^ semi
     | `Asgn (_, _, next_term) | `Assert (_, next_term) | `AssertDomain (_, next_term) ->
       path_selector_term ctx last_branch next_term
-    | `Instantiate _ -> failwith ("unreachable @ " ^ __LOC__)
+    | `Force _ -> failwith ("unreachable @ " ^ __LOC__)
     | `LetStar ((_, binding_term), body_term) ->
       let binding_result = path_selector_term ctx last_branch binding_term in
       let body_result = path_selector_term ctx last_branch body_term in

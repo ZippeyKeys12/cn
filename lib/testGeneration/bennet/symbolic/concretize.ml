@@ -125,7 +125,7 @@ module Make (AD : Domain.T) = struct
     | `AssertDomain (_, next_term) ->
       (* Assert domain constraints - skip domain for now and continue *)
       concretize_term sigma next_term
-    | `Instantiate _ -> failwith ("unreachable @ " ^ __LOC__)
+    | `Force _ -> failwith ("unreachable @ " ^ __LOC__)
     | `ITE (it_if, then_term, else_term) ->
       (* Convert if-then-else to PickSized statement with recursive calls *)
       let wgts1 =

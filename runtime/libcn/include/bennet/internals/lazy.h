@@ -34,13 +34,13 @@ bool bennet_lazy_mark(void* ptr);
 void bennet_lazy_unmark(void* ptr);
 
 /**
- * Check if a tracked pointer has been instantiated (marked as used).
+ * Check if a tracked pointer has been forced (marked as used).
  * Asserts that the pointer was previously registered with bennet_lazy_new.
  *
  * @param ptr The pointer to check
- * @return true if the pointer has been instantiated, false otherwise
+ * @return true if the pointer has been forced, false otherwise
  */
-bool bennet_lazy_is_instantiated(void* ptr);
+bool bennet_lazy_is_forced(void* ptr);
 
 /**
  * Reset the lazy tracking system.

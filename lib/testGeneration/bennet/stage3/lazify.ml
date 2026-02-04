@@ -27,7 +27,7 @@ module Make (AD : Domain.T) = struct
       | `ITE (it_if, gt_then, gt_else) ->
         Sym.Set.mem x (IT.free_vars it_if) || aux gt_then || aux gt_else
       | `Map ((_, _, it_perm), gt') -> Sym.Set.mem x (IT.free_vars it_perm) || aux gt'
-      | `Instantiate _ -> failwith ("unreachable @ " ^ __LOC__)
+      | `Force _ -> failwith ("unreachable @ " ^ __LOC__)
       | `Pick gts -> List.exists aux gts
     in
     aux gt
@@ -50,8 +50,8 @@ module Make (AD : Domain.T) = struct
     | `Map ((i, i_bt, it_perm), gt_inner) ->
       Term.map_ ((i, i_bt, it_perm), transform_gt gt_inner) () loc
     | `Pick gts -> Term.pick_ (List.map transform_gt gts) () bt loc
-    | `Instantiate ((x, gt_inner), gt_rest) ->
-      Term.instantiate_ ((x, transform_gt gt_inner), transform_gt gt_rest) () loc
+    | `Force ((x, gt_inner), gt_rest) ->
+      Term.force_ ((x, transform_gt gt_inner), transform_gt gt_rest) () loc
 
 
   let transform_gd (gd : Def.t) : Def.t = { gd with body = transform_gt gd.body }

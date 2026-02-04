@@ -37,8 +37,8 @@ module Make (AD : Domain.T) = struct
         | `ITE of IT.t * 'recur annot * 'recur annot (** If-then-else *)
         | `MapElab of (Sym.t * BT.t * (IT.t * IT.t) * IT.t) * 'recur annot
         | `SplitSizeElab of Sym.t * Sym.Set.t * 'recur annot
-        | `InstantiateElab of Sym.t * (Sym.t * 'recur annot) * 'recur annot
-          (** Elaborated instantiate with backtrack var *)
+        | `ForceElab of Sym.t * (Sym.t * 'recur annot) * 'recur annot
+          (** Elaborated force with backtrack var *)
         ]
       [@@deriving eq, ord]
 
@@ -177,17 +177,14 @@ module Make (AD : Domain.T) = struct
         Annot (`CallSized (fsym, its, sz), tag, bt, loc)
 
 
-      let instantiate_elab_
+      let force_elab_
             ((backtrack_var, (x, gt_inner), gt_rest) : Sym.t * (Sym.t * t) * t)
             (tag : tag_t)
             (loc : Locations.t)
         : t
         =
         Annot
-          ( `InstantiateElab (backtrack_var, (x, gt_inner), gt_rest),
-            tag,
-            basetype gt_rest,
-            loc )
+          (`ForceElab (backtrack_var, (x, gt_inner), gt_rest), tag, basetype gt_rest, loc)
     end
   end
 

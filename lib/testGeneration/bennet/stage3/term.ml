@@ -27,8 +27,8 @@ module Make (AD : Domain.T) = struct
         | `ITE of IT.t * 'recur annot * 'recur annot (** If-then-else *)
         | `Map of (Sym.t * BT.t * IT.t) * 'recur annot
         | `Pick of 'recur annot list
-        | `Instantiate of (Sym.t * 'recur annot) * 'recur annot
-          (** Instantiate a lazily-generated value, then continue with rest *)
+        | `Force of (Sym.t * 'recur annot) * 'recur annot
+          (** Force a lazily-generated value, then continue with rest *)
         ]
       [@@deriving eq, ord]
 
@@ -113,13 +113,13 @@ module Make (AD : Domain.T) = struct
         Annot (`Pick gts, tag, bt, loc)
 
 
-      let instantiate_
+      let force_
             (((x, gt_inner), gt_rest) : (Sym.t * t) * t)
             (tag : tag_t)
             (loc : Locations.t)
         : t
         =
-        Annot (`Instantiate ((x, gt_inner), gt_rest), tag, basetype gt_rest, loc)
+        Annot (`Force ((x, gt_inner), gt_rest), tag, basetype gt_rest, loc)
     end
   end
 

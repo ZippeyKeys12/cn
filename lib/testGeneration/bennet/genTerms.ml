@@ -40,10 +40,10 @@ module Base (AD : Domain.T) = struct
     | `MapElab of (Sym.t * BT.t * (IT.t * IT.t) * IT.t) * ('tag, 'recur) annot
     | `PickSizedElab of Sym.t * (Z.t * ('tag, 'recur) annot) list
     | `SplitSizeElab of Sym.t * Sym.Set.t * ('tag, 'recur) annot
-    | `Instantiate of (Sym.t * ('tag, 'recur) annot) * ('tag, 'recur) annot
-      (** Instantiate a lazily-evaluated value, then continue with rest *)
-    | `InstantiateElab of Sym.t * (Sym.t * ('tag, 'recur) annot) * ('tag, 'recur) annot
-      (** Elaborated instantiate with backtrack var *)
+    | `Force of (Sym.t * ('tag, 'recur) annot) * ('tag, 'recur) annot
+      (** Force a lazily-evaluated value, then continue with rest *)
+    | `ForceElab of Sym.t * (Sym.t * ('tag, 'recur) annot) * ('tag, 'recur) annot
+      (** Elaborated force with backtrack var *)
     ]
   [@@deriving eq, ord]
 end
@@ -116,9 +116,9 @@ module type T = sig
 
   val split_size_elab_ : Sym.t * Sym.Set.t * t -> tag_t -> Locations.t -> t
 
-  val instantiate_ : (Sym.t * t) * t -> tag_t -> Locations.t -> t
+  val force_ : (Sym.t * t) * t -> tag_t -> Locations.t -> t
 
-  val instantiate_elab_ : Sym.t * (Sym.t * t) * t -> tag_t -> Locations.t -> t
+  val force_elab_ : Sym.t * (Sym.t * t) * t -> tag_t -> Locations.t -> t
 end
 
 module Make (GT : T) = struct
@@ -294,14 +294,14 @@ module Make (GT : T) = struct
              ^^^ colon
              ^^^ BT.pp p_bt)
       ^/^ pp gt_rest
-    | `Instantiate ((x, gt_inner), gt_rest) ->
-      !^"instantiate"
+    | `Force ((x, gt_inner), gt_rest) ->
+      !^"force"
       ^^ parens (Sym.pp x)
       ^^ braces (nest 2 (break 1 ^^ pp gt_inner) ^^ break 1)
       ^^ semi
       ^/^ pp gt_rest
-    | `InstantiateElab (backtrack_var, (x, gt_inner), gt_rest) ->
-      !^"instantiate"
+    | `ForceElab (backtrack_var, (x, gt_inner), gt_rest) ->
+      !^"force"
       ^^ brackets (Sym.pp backtrack_var)
       ^^ parens (Sym.pp x)
       ^^ braces (nest 2 (break 1 ^^ pp gt_inner) ^^ break 1)
@@ -358,8 +358,7 @@ module Make (GT : T) = struct
     | `PickSized wgts | `PickSizedElab (_, wgts) ->
       wgts |> List.map snd |> free_vars_bts_list
     | `SplitSize (_, gt') | `SplitSizeElab (_, _, gt') -> free_vars_bts gt'
-    | `Instantiate ((_, gt_inner), gt_rest) | `InstantiateElab (_, (_, gt_inner), gt_rest)
-      ->
+    | `Force ((_, gt_inner), gt_rest) | `ForceElab (_, (_, gt_inner), gt_rest) ->
       let inner_fvs = free_vars_bts gt_inner in
       (* We don't remove x since it is required to already exist *)
       let rest_fvs = free_vars_bts gt_rest in
@@ -409,8 +408,7 @@ module Make (GT : T) = struct
     | `SplitSize (_, gt')
     | `SplitSizeElab (_, _, gt') ->
       contains_call gt'
-    | `Instantiate ((_, gt_inner), gt_rest) | `InstantiateElab (_, (_, gt_inner), gt_rest)
-      ->
+    | `Force ((_, gt_inner), gt_rest) | `ForceElab (_, (_, gt_inner), gt_rest) ->
       contains_call gt_inner || contains_call gt_rest
     | `Pick gts -> List.exists contains_call gts
     | `PickSized wgts | `PickSizedElab (_, wgts) ->
@@ -430,8 +428,7 @@ module Make (GT : T) = struct
     | `Map (_, gt') | `MapElab (_, gt') | `SplitSize (_, gt') | `SplitSizeElab (_, _, gt')
       ->
       contains_constraint gt'
-    | `Instantiate ((_, gt_inner), gt_rest) | `InstantiateElab (_, (_, gt_inner), gt_rest)
-      ->
+    | `Force ((_, gt_inner), gt_rest) | `ForceElab (_, (_, gt_inner), gt_rest) ->
       contains_constraint gt_inner || contains_constraint gt_rest
     | `Pick gts -> List.exists contains_constraint gts
     | `PickSized wgts | `PickSizedElab (_, wgts) ->
@@ -463,8 +460,7 @@ module Make (GT : T) = struct
       | `SplitSize (_, gt_rest)
       | `SplitSizeElab (_, _, gt_rest) ->
         aux gt_rest
-      | `Instantiate ((_, gt_inner), gt_rest)
-      | `InstantiateElab (_, (_, gt_inner), gt_rest) ->
+      | `Force ((_, gt_inner), gt_rest) | `ForceElab (_, (_, gt_inner), gt_rest) ->
         Sym.Set.union (aux gt_inner) (aux gt_rest)
       | `ITE (it_if, gt_then, gt_else) ->
         List.fold_left Sym.Set.union (IT.preds_of it_if) [ aux gt_then; aux gt_else ]
@@ -541,25 +537,19 @@ module Make (GT : T) = struct
     | `SplitSize (syms, gt') -> split_size_ (syms, subst su gt') tag loc
     | `SplitSizeElab (split_var, syms, gt') ->
       split_size_elab_ (split_var, syms, subst su gt') tag loc
-    | `Instantiate ((x, gt_inner), gt_rest) ->
+    | `Force ((x, gt_inner), gt_rest) ->
       (match List.assoc_opt Sym.equal x su.replace with
        | Some (`Term (IT (Sym x_new, _, _)) | `Rename x_new) ->
-         instantiate_ ((x_new, subst su gt_inner), subst su gt_rest) tag loc
+         force_ ((x_new, subst su gt_inner), subst su gt_rest) tag loc
        | Some (`Term _) -> subst su gt_rest
-       | None -> instantiate_ ((x, subst su gt_inner), subst su gt_rest) tag loc)
-    | `InstantiateElab (backtrack_var, (x, gt_inner), gt_rest) ->
+       | None -> force_ ((x, subst su gt_inner), subst su gt_rest) tag loc)
+    | `ForceElab (backtrack_var, (x, gt_inner), gt_rest) ->
       (match List.assoc_opt Sym.equal x su.replace with
        | Some (`Term (IT (Sym x_new, _, _)) | `Rename x_new) ->
-         instantiate_elab_
-           (backtrack_var, (x_new, subst su gt_inner), subst su gt_rest)
-           tag
-           loc
+         force_elab_ (backtrack_var, (x_new, subst su gt_inner), subst su gt_rest) tag loc
        | Some (`Term _) -> subst su gt_rest
        | None ->
-         instantiate_elab_
-           (backtrack_var, (x, subst su gt_inner), subst su gt_rest)
-           tag
-           loc)
+         force_elab_ (backtrack_var, (x, subst su gt_inner), subst su gt_rest) tag loc)
 
 
   and alpha_rename_gen x gt =
@@ -619,10 +609,10 @@ module Make (GT : T) = struct
     | `SplitSize (syms, gt') -> split_size_ (syms, map_gen_pre f gt') tag loc
     | `SplitSizeElab (split_var, syms, gt') ->
       split_size_elab_ (split_var, syms, map_gen_pre f gt') tag loc
-    | `Instantiate ((x, gt_inner), gt_rest) ->
-      instantiate_ ((x, map_gen_pre f gt_inner), map_gen_pre f gt_rest) tag loc
-    | `InstantiateElab (backtrack_var, (x, gt_inner), gt_rest) ->
-      instantiate_elab_
+    | `Force ((x, gt_inner), gt_rest) ->
+      force_ ((x, map_gen_pre f gt_inner), map_gen_pre f gt_rest) tag loc
+    | `ForceElab (backtrack_var, (x, gt_inner), gt_rest) ->
+      force_elab_
         (backtrack_var, (x, map_gen_pre f gt_inner), map_gen_pre f gt_rest)
         tag
         loc
@@ -674,10 +664,10 @@ module Make (GT : T) = struct
       | `SplitSize (syms, gt') -> split_size_ (syms, map_gen_post f gt') tag loc
       | `SplitSizeElab (split_var, syms, gt') ->
         split_size_elab_ (split_var, syms, map_gen_post f gt') tag loc
-      | `Instantiate ((x, gt_inner), gt_rest) ->
-        instantiate_ ((x, map_gen_post f gt_inner), map_gen_post f gt_rest) tag loc
-      | `InstantiateElab (backtrack_var, (x, gt_inner), gt_rest) ->
-        instantiate_elab_
+      | `Force ((x, gt_inner), gt_rest) ->
+        force_ ((x, map_gen_post f gt_inner), map_gen_post f gt_rest) tag loc
+      | `ForceElab (backtrack_var, (x, gt_inner), gt_rest) ->
+        force_elab_
           (backtrack_var, (x, map_gen_post f gt_inner), map_gen_post f gt_rest)
           tag
           loc
@@ -714,10 +704,9 @@ module Make (GT : T) = struct
       `PickSizedElab (pick_var, List.map (fun (w, g) -> (w, upcast g)) choices)
     | `SplitSize (syms, gt') -> `SplitSize (syms, upcast gt')
     | `SplitSizeElab (split_var, syms, gt') -> `SplitSizeElab (split_var, syms, upcast gt')
-    | `Instantiate ((x, gt_inner), gt_rest) ->
-      `Instantiate ((x, upcast gt_inner), upcast gt_rest)
-    | `InstantiateElab (backtrack_var, (x, gt_inner), gt_rest) ->
-      `InstantiateElab (backtrack_var, (x, upcast gt_inner), upcast gt_rest)
+    | `Force ((x, gt_inner), gt_rest) -> `Force ((x, upcast gt_inner), upcast gt_rest)
+    | `ForceElab (backtrack_var, (x, gt_inner), gt_rest) ->
+      `ForceElab (backtrack_var, (x, upcast gt_inner), upcast gt_rest)
 
 
   and upcast (Annot (tm_, tag, bt, loc)) : ('tag, (('tag, 'recur) ast as 'recur)) annot =
@@ -756,10 +745,10 @@ module Make (GT : T) = struct
     | `SplitSize (syms, gt') -> split_size_ (syms, downcast gt') tag loc
     | `SplitSizeElab (split_var, syms, gt') ->
       split_size_elab_ (split_var, syms, downcast gt') tag loc
-    | `Instantiate ((x, gt_inner), gt_rest) ->
-      instantiate_ ((x, downcast gt_inner), downcast gt_rest) tag loc
-    | `InstantiateElab (backtrack_var, (x, gt_inner), gt_rest) ->
-      instantiate_elab_ (backtrack_var, (x, downcast gt_inner), downcast gt_rest) tag loc
+    | `Force ((x, gt_inner), gt_rest) ->
+      force_ ((x, downcast gt_inner), downcast gt_rest) tag loc
+    | `ForceElab (backtrack_var, (x, gt_inner), gt_rest) ->
+      force_elab_ (backtrack_var, (x, downcast gt_inner), downcast gt_rest) tag loc
 
 
   (***************)
@@ -832,13 +821,13 @@ module Make (GT : T) = struct
     Annot (elaborate_split_size_ gt_, tag, bt, loc)
 
 
-  let elaborate_instantiate_ (`Instantiate ((x, gt_inner), gt_rest)) =
+  let elaborate_force_ (`Force ((x, gt_inner), gt_rest)) =
     let backtrack_var = Sym.fresh_anon () in
-    `InstantiateElab (backtrack_var, (x, gt_inner), gt_rest)
+    `ForceElab (backtrack_var, (x, gt_inner), gt_rest)
 
 
-  let elaborate_instantiate (Annot (gt_, tag, bt, loc)) =
-    Annot (elaborate_instantiate_ gt_, tag, bt, loc)
+  let elaborate_force (Annot (gt_, tag, bt, loc)) =
+    Annot (elaborate_force_ gt_, tag, bt, loc)
 end
 
 (** Module providing default implementations for unsupported stage constructors *)
@@ -882,9 +871,9 @@ struct
 
   let asgn_ _ _ _ = unsupported "asgn_"
 
-  let instantiate_ _ _ _ = unsupported "instantiate_"
+  let force_ _ _ _ = unsupported "force_"
 
-  let instantiate_elab_ _ _ _ = unsupported "instantiate_elab_"
+  let force_elab_ _ _ _ = unsupported "force_elab_"
 
-  let instantiate_domain_ _ _ _ = unsupported "instantiate_domain_"
+  let force_domain_ _ _ _ = unsupported "force_domain_"
 end

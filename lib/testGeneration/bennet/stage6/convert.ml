@@ -100,12 +100,12 @@ module Make (AD : Domain.T) = struct
         in
         let gt_rest = aux vars path_vars gt_rest in
         Annot (`SplitSizeElab (marker_var, syms, gt_rest), (path_vars, last_var), bt, loc)
-      | `Instantiate ((x, gt_inner), gt_rest) ->
+      | `Force ((x, gt_inner), gt_rest) ->
         let backtrack_var = Sym.fresh_anon () in
         let gt_inner = aux vars path_vars gt_inner in
         let gt_rest = aux (backtrack_var :: vars) path_vars gt_rest in
         Annot
-          ( `InstantiateElab (backtrack_var, (x, gt_inner), gt_rest),
+          ( `ForceElab (backtrack_var, (x, gt_inner), gt_rest),
             (path_vars, last_var),
             bt,
             loc )

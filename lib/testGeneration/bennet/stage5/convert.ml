@@ -26,7 +26,7 @@ module Make (AD : Domain.T) = struct
       | `AssertDomain (_, rest) -> aux rest
       | `ITE (_, t, f) -> max (aux t) (aux f)
       | `Map (_, inner) -> aux inner
-      | `Instantiate ((_, inner), rest) -> aux inner + aux rest
+      | `Force ((_, inner), rest) -> aux inner + aux rest
     in
     aux gr
 
@@ -83,10 +83,10 @@ module Make (AD : Domain.T) = struct
       | `Map ((i, i_bt, perm), inner) ->
         let inner, syms = aux inner in
         (GenTerms.Annot (`Map ((i, i_bt, perm), inner), (), bt, loc), syms)
-      | `Instantiate ((x, inner), rest) ->
+      | `Force ((x, inner), rest) ->
         let inner, syms_inner = aux inner in
         let rest, syms_rest = aux rest in
-        ( GenTerms.Annot (`Instantiate ((x, inner), rest), (), bt, loc),
+        ( GenTerms.Annot (`Force ((x, inner), rest), (), bt, loc),
           Sym.Set.union syms_inner syms_rest )
     in
     aux gr

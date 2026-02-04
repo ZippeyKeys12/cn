@@ -796,8 +796,8 @@ module Make (AD : Domain.T) = struct
       failwith "Should be unreachable due to lifting of `assign`"
     | `LetStar ((_, GenTerms.Annot (`SplitSizeElab _, _, _, _)), _) ->
       failwith "Should be unreachable due to lifting"
-    | `LetStar ((_, GenTerms.Annot (`InstantiateElab (_, _, _), _, _, _)), _) ->
-      failwith "Should be unreachable due to lifting of `instantiate`"
+    | `LetStar ((_, GenTerms.Annot (`ForceElab (_, _, _), _, _, _)), _) ->
+      failwith "Should be unreachable due to lifting of `force`"
     | `Return it ->
       let b, s, e = transform_it filename sigma name it in
       (b, s, e)
@@ -995,12 +995,12 @@ module Make (AD : Domain.T) = struct
       in
       let b', s', e' = transform_term filename sigma ctx name gt_rest in
       (b @ b', s @ s', e')
-    | `InstantiateElab
+    | `ForceElab
         (backtrack_var, (x, GenTerms.Annot (`Lazy, _, Bits (sign, bits), _)), gt_rest) ->
       let func_name =
         match sign with
-        | Unsigned -> "BENNET_INSTANTIATE_ARBITRARY_UNSIGNED"
-        | Signed -> "BENNET_INSTANTIATE_ARBITRARY_SIGNED"
+        | Unsigned -> "BENNET_FORCE_ARBITRARY_UNSIGNED"
+        | Signed -> "BENNET_FORCE_ARBITRARY_SIGNED"
       in
       let s_inst =
         [ A.AilSexpr
@@ -1025,13 +1025,12 @@ module Make (AD : Domain.T) = struct
       in
       let b_rest, s_rest, e_rest = transform_term filename sigma ctx name gt_rest in
       (b_rest, s_inst @ s_rest, e_rest)
-    | `InstantiateElab (backtrack_var, (x, GenTerms.Annot (`Lazy, _, Loc (), _)), gt_rest)
-      ->
+    | `ForceElab (backtrack_var, (x, GenTerms.Annot (`Lazy, _, Loc (), _)), gt_rest) ->
       let s_inst =
         [ A.AilSexpr
             (mk_expr
                (AilEcall
-                  ( mk_expr (string_ident "BENNET_INSTANTIATE_ARBITRARY_POINTER"),
+                  ( mk_expr (string_ident "BENNET_FORCE_ARBITRARY_POINTER"),
                     List.map
                       mk_expr
                       [ AilEconst
@@ -1048,12 +1047,12 @@ module Make (AD : Domain.T) = struct
       in
       let b_rest, s_rest, e_rest = transform_term filename sigma ctx name gt_rest in
       (b_rest, s_inst @ s_rest, e_rest)
-    | `InstantiateElab
+    | `ForceElab
         (backtrack_var, (x, GenTerms.Annot (`Eager, _, Bits (sign, bits), _)), gt_rest) ->
       let func_name =
         match sign with
-        | Unsigned -> "BENNET_INSTANTIATE_ARBITRARY_UNSIGNED"
-        | Signed -> "BENNET_INSTANTIATE_ARBITRARY_SIGNED"
+        | Unsigned -> "BENNET_FORCE_ARBITRARY_UNSIGNED"
+        | Signed -> "BENNET_FORCE_ARBITRARY_SIGNED"
       in
       let s_inst =
         [ A.AilSexpr
@@ -1078,13 +1077,12 @@ module Make (AD : Domain.T) = struct
       in
       let b_rest, s_rest, e_rest = transform_term filename sigma ctx name gt_rest in
       (b_rest, s_inst @ s_rest, e_rest)
-    | `InstantiateElab (backtrack_var, (x, GenTerms.Annot (`Eager, _, Loc (), _)), gt_rest)
-      ->
+    | `ForceElab (backtrack_var, (x, GenTerms.Annot (`Eager, _, Loc (), _)), gt_rest) ->
       let s_inst =
         [ A.AilSexpr
             (mk_expr
                (AilEcall
-                  ( mk_expr (string_ident "BENNET_INSTANTIATE_ARBITRARY_POINTER"),
+                  ( mk_expr (string_ident "BENNET_FORCE_ARBITRARY_POINTER"),
                     List.map
                       mk_expr
                       [ AilEconst
@@ -1101,14 +1099,14 @@ module Make (AD : Domain.T) = struct
       in
       let b_rest, s_rest, e_rest = transform_term filename sigma ctx name gt_rest in
       (b_rest, s_inst @ s_rest, e_rest)
-    | `InstantiateElab
+    | `ForceElab
         ( backtrack_var,
           (x, GenTerms.Annot (`ArbitraryDomain d, _, (Bits (sign, bits) as x_bt), _)),
           gt_rest ) ->
       let func_name =
         match sign with
-        | Unsigned -> "BENNET_INSTANTIATE_ARBITRARY_DOMAIN_UNSIGNED"
-        | Signed -> "BENNET_INSTANTIATE_ARBITRARY_DOMAIN_SIGNED"
+        | Unsigned -> "BENNET_FORCE_ARBITRARY_DOMAIN_UNSIGNED"
+        | Signed -> "BENNET_FORCE_ARBITRARY_DOMAIN_SIGNED"
       in
       let s_inst =
         [ A.AilSexpr
@@ -1148,7 +1146,7 @@ module Make (AD : Domain.T) = struct
       in
       let b_rest, s_rest, e_rest = transform_term filename sigma ctx name gt_rest in
       (b_rest, s_inst @ s_rest, e_rest)
-    | `InstantiateElab
+    | `ForceElab
         ( backtrack_var,
           (x, GenTerms.Annot (`ArbitraryDomain d, _, (Loc () as x_bt), _)),
           gt_rest ) ->
@@ -1156,7 +1154,7 @@ module Make (AD : Domain.T) = struct
         [ A.AilSexpr
             (mk_expr
                (AilEcall
-                  ( mk_expr (string_ident "BENNET_INSTANTIATE_ARBITRARY_DOMAIN_POINTER"),
+                  ( mk_expr (string_ident "BENNET_FORCE_ARBITRARY_DOMAIN_POINTER"),
                     List.map
                       mk_expr
                       [ AilEconst
@@ -1177,15 +1175,14 @@ module Make (AD : Domain.T) = struct
       in
       let b_rest, s_rest, e_rest = transform_term filename sigma ctx name gt_rest in
       (b_rest, s_inst @ s_rest, e_rest)
-    | `InstantiateElab
-        (backtrack_var, (x, GenTerms.Annot (`Return it, _, x_bt, _)), gt_rest) ->
+    | `ForceElab (backtrack_var, (x, GenTerms.Annot (`Return it, _, x_bt, _)), gt_rest) ->
       let b_value, s_value, e_value = transform_it filename sigma name it in
       let s_inst =
         A.
           [ AilSexpr
               (mk_expr
                  (string_call
-                    "BENNET_INSTANTIATE_RETURN"
+                    "BENNET_FORCE_RETURN"
                     ([ mk_expr (AilEident backtrack_var);
                        mk_expr (string_ident (name_of_bt x_bt));
                        mk_expr (AilEident x);
@@ -1200,9 +1197,9 @@ module Make (AD : Domain.T) = struct
       in
       let b_rest, s_rest, e_rest = transform_term filename sigma ctx name gt_rest in
       (b_value @ b_rest, s_value @ s_inst @ s_rest, e_rest)
-    | `InstantiateElab (_, (_, GenTerms.Annot (`Symbolic, _, _, _)), _) ->
-      failwith "TODO: InstantiateElab Symbolic"
-    | `InstantiateElab
+    | `ForceElab (_, (_, GenTerms.Annot (`Symbolic, _, _, _)), _) ->
+      failwith "TODO: ForceElab Symbolic"
+    | `ForceElab
         ( backtrack_var,
           ( x,
             GenTerms.Annot
@@ -1213,8 +1210,8 @@ module Make (AD : Domain.T) = struct
           gt_rest ) ->
       let func_name =
         match sign with
-        | Unsigned -> "BENNET_INSTANTIATE_SPECIALIZED_UNSIGNED"
-        | Signed -> "BENNET_INSTANTIATE_SPECIALIZED_SIGNED"
+        | Unsigned -> "BENNET_FORCE_SPECIALIZED_UNSIGNED"
+        | Signed -> "BENNET_FORCE_SPECIALIZED_SIGNED"
       in
       let mk_bound_arg = function
         | None -> mk_expr (AilEconst ConstantNull)
@@ -1259,7 +1256,7 @@ module Make (AD : Domain.T) = struct
       in
       let b_rest, s_rest, e_rest = transform_term filename sigma ctx name gt_rest in
       (b_rest, s_inst @ s_rest, e_rest)
-    | `InstantiateElab
+    | `ForceElab
         ( backtrack_var,
           ( x,
             GenTerms.Annot
@@ -1282,7 +1279,7 @@ module Make (AD : Domain.T) = struct
         [ A.AilSexpr
             (mk_expr
                (AilEcall
-                  ( mk_expr (string_ident "BENNET_INSTANTIATE_SPECIALIZED_POINTER"),
+                  ( mk_expr (string_ident "BENNET_FORCE_SPECIALIZED_POINTER"),
                     [ mk_expr
                         (AilEconst
                            (ConstantInteger
@@ -1306,15 +1303,15 @@ module Make (AD : Domain.T) = struct
       in
       let b_rest, s_rest, e_rest = transform_term filename sigma ctx name gt_rest in
       (b_rest, s_inst @ s_rest, e_rest)
-    | `InstantiateElab (_, (_, GenTerms.Annot (`ArbitrarySpecialized _, _, bt, _)), _) ->
+    | `ForceElab (_, (_, GenTerms.Annot (`ArbitrarySpecialized _, _, bt, _)), _) ->
       failwith ("unreachable @ " ^ __LOC__ ^ " with type: " ^ Pp.plain (BT.pp bt))
-    | `InstantiateElab (_, (_, GenTerms.Annot (`Eager, _, bt, _)), _) ->
+    | `ForceElab (_, (_, GenTerms.Annot (`Eager, _, bt, _)), _) ->
       failwith ("unreachable @ " ^ __LOC__ ^ " with type: " ^ Pp.plain (BT.pp bt))
-    | `InstantiateElab (_, (_, GenTerms.Annot (`ArbitraryDomain _, _, bt, _)), _) ->
+    | `ForceElab (_, (_, GenTerms.Annot (`ArbitraryDomain _, _, bt, _)), _) ->
       failwith ("unreachable @ " ^ __LOC__ ^ " with type: " ^ Pp.plain (BT.pp bt))
-    | `InstantiateElab (_, (_, GenTerms.Annot (`Lazy, _, bt, _)), _) ->
+    | `ForceElab (_, (_, GenTerms.Annot (`Lazy, _, bt, _)), _) ->
       failwith ("unreachable @ " ^ __LOC__ ^ " with type: " ^ Pp.plain (BT.pp bt))
-    | `InstantiateElab _ -> failwith "unsupported InstantiateElab inner term"
+    | `ForceElab _ -> failwith "unsupported ForceElab inner term"
 
 
   let transform_gen_def
