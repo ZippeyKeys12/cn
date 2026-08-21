@@ -1,4 +1,6 @@
-static int im_a_global;
+/* The CN specification is this static's only source-level reference, so keep
+ * the definition in target objects for clients that resolve spec globals. */
+[[gnu::used]] static int im_a_global;
 
 /*@
   predicate (void) MaybeGlobal(pointer p, boolean cond)

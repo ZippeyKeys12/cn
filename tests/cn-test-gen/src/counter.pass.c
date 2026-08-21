@@ -23,3 +23,13 @@ static uint64_t count_alt()
 {
   return __count++;
 }
+
+/* CN's exporter names a static test through the same externally-visible
+ * wrapper spelling Fulminate generates. AustenTest compiles the original C
+ * target, so expose that wrapper only for its target build. */
+#ifdef __AUSTEN_TEST
+uint64_t static_counterpass_count_alt(void)
+{
+  return count_alt();
+}
+#endif

@@ -1,4 +1,4 @@
-#ifdef __CN_TEST
+#if defined(__AUSTEN_TEST) || defined(__CN_TEST)
 static int x;
 
 int always_fail()
