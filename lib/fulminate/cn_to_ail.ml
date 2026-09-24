@@ -1643,12 +1643,24 @@ let rec cn_to_ail_expr_aux
       | _ :: _ps' -> false
       | [] -> failwith "Empty patterns not allowed"
     in
-    let expand_datatype c (ps, e) =
+    let expand_datatype c ordered (ps, e) =
       match ps with
       | T.(Pat (PWild, _p_bt, _p_loc) as pat) :: ps' -> Some (pat :: ps', e)
-      | T.(Pat (PConstructor (c_nm, members), _, _)) :: ps' ->
+      | T.(Pat (PConstructor (c_nm, members), _, p_loc)) :: ps' ->
         if Sym.equal c c_nm then (
-          let member_patterns = List.map snd members in
+          (* Bind each member by name. [ordered] is the declaration order the
+             case block destructures the constructor in; a well-typed pattern
+             lists its members sorted by identifier (WellTyped's
+             [correct_members_sorted_annotated]), so a positional zip binds a
+             binder to whichever member happens to share its position. *)
+          let member_patterns =
+            List.map
+              (fun (id, bt) ->
+                 match List.assoc_opt Id.equal id members with
+                 | Some pat' -> pat'
+                 | None -> mk_pattern T.PWild bt p_loc)
+              ordered
+          in
           Some (member_patterns @ ps', e))
         else
           None
@@ -1738,7 +1750,13 @@ let rec cn_to_ail_expr_aux
                    PassBack
                in
                let build_case (constr_sym, members_with_types) =
-                 let cases' = List.filter_map (expand_datatype constr_sym) cases in
+                 let ids, ts = List.split (List.rev members_with_types) in
+                 let bts = List.map cn_base_type_to_bt ts in
+                 let cases' =
+                   List.filter_map
+                     (expand_datatype constr_sym (List.combine ids bts))
+                     cases
+                 in
                  let suffix = "_" ^ string_of_int count in
                  let lc_sym =
                    generate_sym_with_suffix ~suffix:"" ~lowercase:true constr_sym
@@ -1759,8 +1777,6 @@ let rec cn_to_ail_expr_aux
                    mk_stmt
                      A.(AilSdeclaration [ (count_sym, Some (mk_expr rhs_memberof)) ])
                  in
-                 let ids, ts = List.split (List.rev members_with_types) in
-                 let bts = List.map cn_base_type_to_bt ts in
                  let new_constr_it =
                    IT (Sym count_sym, BT.Struct lc_sym, Cerb_location.unknown)
                  in

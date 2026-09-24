@@ -414,13 +414,23 @@ module Make (AD : Domain.T) = struct
                  if not (Sym.equal constr constr') then
                    None
                  else (
-                   let zipped = List.combine xits xps in
-                   Some
-                     (List.flatten
-                      @@ List.map
-                           (fun ((_, it), (_, p)) ->
-                              List.flatten @@ Option.to_list @@ get_match it p)
-                           zipped))
+                   (* Members by name: a well-typed pattern lists its members
+                      sorted by identifier, while a constructor literal keeps
+                      the order it was spelled in, so a positional zip pairs a
+                      binder with whichever member shares its position. *)
+                   let matched =
+                     List.map
+                       (fun (id, p) ->
+                          match List.assoc_opt Id.equal id xits with
+                          | Some it ->
+                            Some (List.flatten @@ Option.to_list @@ get_match it p)
+                          | None -> None)
+                       xps
+                   in
+                   if List.exists Option.is_none matched then
+                     None
+                   else
+                     Some (List.concat_map Option.get matched))
                | _ -> None)
           in
           let none = "No pattern matched" in
